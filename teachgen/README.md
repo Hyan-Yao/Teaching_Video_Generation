@@ -6,9 +6,16 @@ single-key provider, then narrates, composites, and self-reviews the result.
 
 ```bash
 export OPENAI_API_KEY=sk-...
+export OPENROUTER_API_KEY=sk-or-...     # required for evaluator modes
 
 # full run
 python -m teachgen --topic "How the Fourier transform works"
+
+# use the evaluator to drive the feedback/refinement loop
+python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator
+
+# evaluator feedback + final evaluator report
+python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator --eval-baseline
 
 # inspect the plan before spending money on media
 python -m teachgen --topic "Vectors" --plan-only
@@ -26,17 +33,60 @@ python -m teachgen --topic "Vectors" --audience "high-school students" \
 - **Phase 2 — produce (media).** per segment: narrate (TTS + word timings) and render
   the visual → composite → an MLLM watches the result and proposes **targeted** fixes
   → loop. Output at `runs/<topic>/video/final.mp4`.
+- **Evaluator feedback mode.** `--feedback-mode evaluator` uses the evaluator during
+  the refinement loop and passes adapted evaluator feedback into the existing router.
+- **Optional evaluator baseline.** `--eval-baseline` runs the evaluator after the
+  final video is produced and writes `runs/<topic>/evaluator_baseline/evaluation_result.json`.
 
 ```
 cli → pipeline ──┬─ planner:  content_writer → route ─────────────► LessonPlan
                  └─ produce:  narrator + renderers → compositor ──► final.mp4
                                                        │
                               feedback: reviewer → router (re-render only what's broken)
+                              optional: evaluator baseline report
 ```
 
 Everything generative (text, structured, vision, TTS, image) goes through one
 `Provider` (`providers/openai_provider.py`) — that is why a single key suffices.
 Vision review samples frames from the mp4 (OpenAI can't ingest video directly).
+
+## Evaluator Usage
+
+Use the evaluator for feedback/refinement:
+
+```bash
+python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator
+```
+
+This saves:
+
+```text
+runs/<topic>/video/draft_r0.mp4
+runs/<topic>/video/final.mp4
+runs/<topic>/evaluator_feedback_r0/evaluation_result.json
+runs/<topic>/evaluator_feedback_r1/evaluation_result.json
+runs/<topic>/review_r0.json
+runs/<topic>/review_r1.json
+```
+
+To also run the evaluator on the final video after refinement:
+
+```bash
+python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator --eval-baseline
+```
+
+Final evaluator report outputs:
+
+```text
+runs/<topic>/evaluator_baseline/evaluation_result.json
+runs/<topic>/evaluator_baseline/content_grades.json
+runs/<topic>/evaluator_baseline/presentation_grades.json
+runs/<topic>/evaluator_baseline/pedagogy_grades.json
+runs/<topic>/evaluator_baseline/lecture.json
+runs/<topic>/evaluator_baseline/chunks/
+runs/<topic>/evaluator_baseline/chunk_analyses/
+runs/<topic>/evaluator_baseline/sections/
+```
 
 ## The three renderers (plugins in `renderers/`)
 

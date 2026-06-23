@@ -36,7 +36,12 @@ class Config:
 
     # Feedback loop
     use_feedback: bool = True
+    feedback_mode: str = "original"  # "original" | "evaluator" | "none"
     max_feedback_rounds: int = 2
+
+    # Optional post-run evaluator output
+    run_evaluator_baseline: bool = False
+    evaluator_chunk_seconds: float = 900
 
     # Execution
     parallel: bool = True
@@ -76,6 +81,10 @@ class Config:
     @property
     def video_dir(self) -> Path:
         return self.run_dir / "video"       # draft + final composites
+
+    @property
+    def evaluator_baseline_dir(self) -> Path:
+        return self.run_dir / "evaluator_baseline"
 
     def ensure_dirs(self) -> None:
         for d in (self.run_dir, self.assets_dir, self.audio_dir, self.video_dir):

@@ -10,7 +10,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 
 from .config import Config
-from .feedback import reviewer, router
+from .feedback import eval_runner, evaluator_reviewer, reviewer, router
 from .planner import content_writer, route
 from .providers import get_provider
 from .providers.base import Provider
@@ -27,6 +27,16 @@ def generate(cfg: Config) -> dict:
 
     plan = phase1_plan(cfg, provider)
     result = phase2_produce(cfg, provider, plan)
+    if cfg.run_evaluator_baseline:
+        video_path = result["video_path"]
+        _log(f"Running evaluator baseline -> {cfg.evaluator_baseline_dir}")
+        evaluation_path = eval_runner.run_lesson_evaluation(
+            plan,
+            video_path,
+            cfg.evaluator_baseline_dir,
+            chunk_seconds=cfg.evaluator_chunk_seconds,
+        )
+        result["evaluation_path"] = str(evaluation_path)
     return result
 
 
@@ -66,11 +76,15 @@ def phase2_produce(cfg: Config, provider: Provider, plan: LessonPlan) -> dict:
         _log(f"Compositing -> {draft_path}")
         compositor.assemble(visuals, audios, draft_path)
 
-        if not cfg.use_feedback or rnd == cfg.max_feedback_rounds:
+        if not cfg.use_feedback or cfg.feedback_mode == "none" or rnd == cfg.max_feedback_rounds:
             break
 
-        _log("Reviewing composite with MLLM...")
-        rev = reviewer.review(provider, plan, draft_path)
+        if cfg.feedback_mode == "evaluator":
+            _log("Reviewing composite with evaluator...")
+            rev = evaluator_reviewer.review(provider, plan, draft_path, cfg, round_index=rnd)
+        else:
+            _log("Reviewing composite with MLLM...")
+            rev = reviewer.review(provider, plan, draft_path)
         _log(f"   score={rev.overall_score:.1f}  critiques={len(rev.critiques)}")
         (cfg.run_dir / f"review_r{rnd}.json").write_text(
             rev.model_dump_json(indent=2), encoding="utf-8"

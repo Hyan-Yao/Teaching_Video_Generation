@@ -15,15 +15,28 @@ This repo has two parts:
 ```bash
 pip install -r requirements.txt          # core deps (+ system ffmpeg)
 export OPENAI_API_KEY=sk-...
+export OPENROUTER_API_KEY=sk-or-...     # required for evaluator modes
 
 python -m teachgen --topic "How the Fourier transform works"
+
+# use the evaluator to drive the feedback/refinement loop:
+python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator
+
+# evaluator feedback + final evaluator report:
+python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator --eval-baseline
 
 # just the plan (cheap), before producing media:
 python -m teachgen --topic "Vectors" --plan-only
 ```
 
-The output video lands at `runs/<topic>/video/final.mp4`. See **`teachgen/README.md`**
-for the architecture, the two-phase flow, the three renderers, and how to extend it.
+The output video lands at `runs/<topic>/video/final.mp4`. With
+`--feedback-mode evaluator`, the original draft is kept at
+`runs/<topic>/video/draft_r0.mp4`, evaluator feedback output lands under
+`runs/<topic>/evaluator_feedback_r<n>/`, and the router-ready review lands at
+`runs/<topic>/review_r<n>.json`. With `--eval-baseline`, the final evaluator report
+lands at `runs/<topic>/evaluator_baseline/evaluation_result.json`. See
+**`teachgen/README.md`** for the architecture, the two-phase flow, the three
+renderers, evaluator usage, and how to extend it.
 
 ## Code logic
 
@@ -51,6 +64,8 @@ cli → Config.from_env → pipeline.generate
               reviewer.review       sample 12 frames → MLLM critique → ReviewResult (score + fix_actions)
               router.apply          turn blocking critiques into the smallest plan edit; return dirty segment ids
                   → invalidate caches for changed segments only; loop re-does just those
+              --feedback-mode evaluator
+                  evaluator → ReviewResult → router.apply
 ```
 
 **Phase 1 — plan (text only).** `content_writer` asks the model for objectives plus an
@@ -80,6 +95,28 @@ blocking critique into the smallest change (`rewrite_narration`, `replan`, `re_r
 The pipeline drops only those ids from the caches and loops; the final round always
 writes `final.mp4`.
 
+**Evaluator mode.** To use the evaluator during refinement:
+
+```bash
+python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator
+```
+
+To also save a final evaluator report after refinement:
+
+```bash
+python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator --eval-baseline
+```
+
+Saved outputs:
+
+```text
+runs/<topic>/video/draft_r0.mp4
+runs/<topic>/video/final.mp4
+runs/<topic>/evaluator_feedback_r<n>/evaluation_result.json
+runs/<topic>/review_r<n>.json
+runs/<topic>/evaluator_baseline/evaluation_result.json   # only with --eval-baseline
+```
+
 ## Install notes
 
 - **Core** (`requirements.txt`): planner + slide + concept-image + audio + compositing.
@@ -96,4 +133,3 @@ teachgen/     orchestrator: planner, renderers, audio, compositor, feedback
               + make_slide.py and concept_image.py (the slide / image helpers)
 runs/         generated lessons
 ```
-
