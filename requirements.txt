@@ -1,0 +1,13 @@
+# ---------------------------------------------------------------------------
+# Teaching Video Generator — top-level requirements
+# ---------------------------------------------------------------------------
+# Installs the teachgen core (planner, slide, concept_image, audio, compositor).
+-r teachgen/requirements.txt
+
+# System package (install with your OS package manager, NOT pip):
+#   ffmpeg   — required for compositing, audio probing, frame extraction
+#              macOS: brew install ffmpeg   |   ubuntu: apt-get install ffmpeg
+
+# For the `animation` renderer (Manim + code2video deps), additionally install:
+#   pip install -r code2video/requirements.txt
+# Without Manim, animation segments fall back to concept images.

@@ -1,0 +1,71 @@
+# Python
+__trashcan__/
+.gitignore
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+TeachingMonster-released
+code2video/.claude
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+test_env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Manim output
+media/
+CASES/
+*.mp4
+*.mov
+
+# API keys and secrets
+.env
+.env.*
+!.env.example
+*.key
+# Note: api_config.json is a committed *template* (placeholder values only).
+# Put real secrets in a local .env file, which overrides it at runtime.
+
+# Test outputs
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
