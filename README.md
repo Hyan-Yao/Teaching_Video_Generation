@@ -42,5 +42,3 @@ teachgen/     orchestrator: planner, renderers, audio, compositor, feedback
 runs/         generated lessons
 ```
 
-> **Security:** `code2video/api_config.json` contains a real OpenAI key in git history.
-> Revoke it and use the `OPENAI_API_KEY` environment variable instead.
