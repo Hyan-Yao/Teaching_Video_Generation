@@ -158,10 +158,14 @@ class ManimCodeErrorAnalyzer:
 
         elif error_info["fix_scope"] == "function":
             # Function level error: find the function containing the error
+            if error_info["line_number"] is None:
+                return code
             return self._extract_function_containing_line(code, error_info["line_number"])
 
         elif error_info["fix_scope"] == "section":
             # Section level error: find the animation section containing the error
+            if error_info["line_number"] is None:
+                return code
             return self._extract_animation_section(code, error_info["line_number"])
 
         return code  # If the scope cannot be determined, return the entire code

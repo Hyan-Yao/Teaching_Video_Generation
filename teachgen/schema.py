@@ -85,3 +85,41 @@ class ReviewResult(BaseModel):
     @property
     def has_blocking_issues(self) -> bool:
         return any(c.severity in ("blocker", "major") for c in self.critiques)
+
+
+# ---------------------------------------------------------------------------
+# Nested feedback loop — outer review + inner refinement contracts
+# ---------------------------------------------------------------------------
+
+class ContentIssue(BaseModel):
+    """A plan-level problem: narration or visual_brief needs rewriting."""
+
+    segment_id: str
+    field: Literal["narration", "visual_brief"]
+    issue: str
+    suggestion: str
+
+
+class VisualIssue(BaseModel):
+    """A rendering-quality problem: the approach is right but the output looks bad."""
+
+    segment_id: str
+    issue: str
+    suggestion: str
+
+
+class OuterReview(BaseModel):
+    """Holistic evaluation of the composited video, with issues pre-classified."""
+
+    overall_score: float = Field(..., description="0–10 holistic rating")
+    content_issues: list[ContentIssue] = Field(default_factory=list)
+    visual_issues: list[VisualIssue] = Field(default_factory=list)
+    summary: str = ""
+
+    @property
+    def needs_plan_fix(self) -> bool:
+        return bool(self.content_issues)
+
+    @property
+    def needs_visual_fix(self) -> bool:
+        return bool(self.visual_issues)

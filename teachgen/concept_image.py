@@ -42,7 +42,7 @@ USAGE
 
 NOTE ON SIZE
 ------------
-gpt-image-1 supports 1024x1024, 1536x1024 (landscape), 1024x1536 (portrait).
+gpt-image-2 supports 1024x1024, 1536x1024 (landscape), 1024x1536 (portrait).
 For PPT (16:9) we request the landscape 1536x1024 (3:2) and can optionally
 pad/crop to an exact 16:9 canvas with --exact-169 (needs Pillow).
 """
@@ -170,8 +170,8 @@ def main():
 
     ap.add_argument("--text-model", default="gpt-4o-mini",
                     help="GPT text model for step 1 (default: gpt-4o-mini)")
-    ap.add_argument("--image-model", default="gpt-image-1",
-                    help="image model for step 2 (default: gpt-image-1)")
+    ap.add_argument("--image-model", default="gpt-image-2",
+                    help="image model for step 2 (default: gpt-image-2)")
     ap.add_argument("--size", default="1536x1024",
                     choices=["1536x1024", "1024x1024", "1024x1536"],
                     help="image size; 1536x1024 is landscape, closest to 16:9")

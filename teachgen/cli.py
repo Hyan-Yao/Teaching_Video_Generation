@@ -11,6 +11,10 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
+
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from .config import Config
 from .pipeline import generate, phase1_plan
@@ -23,7 +27,9 @@ def main() -> None:
     ap.add_argument("--audience", default="general learners")
     ap.add_argument("--provider", default="openai", choices=["openai", "gemini"])
     ap.add_argument("--no-feedback", action="store_true", help="skip the MLLM review loop")
-    ap.add_argument("--max-rounds", type=int, default=2, help="max feedback rounds")
+    ap.add_argument("--max-rounds", type=int, default=3, help="max outer feedback rounds")
+    ap.add_argument("--score-threshold", type=float, default=8.0,
+                    help="stop early when overall score >= this (0-10)")
     ap.add_argument("--no-parallel", action="store_true")
     ap.add_argument("--max-workers", type=int, default=6)
     ap.add_argument("--run-dir", default="runs")
@@ -39,7 +45,8 @@ def main() -> None:
         audience=args.audience,
         provider=args.provider,
         use_feedback=not args.no_feedback,
-        max_feedback_rounds=args.max_rounds,
+        max_outer_rounds=args.max_rounds,
+        score_threshold=args.score_threshold,
         parallel=not args.no_parallel,
         max_workers=args.max_workers,
         run_dir=args.run_dir,

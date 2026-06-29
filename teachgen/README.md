@@ -15,7 +15,7 @@ python -m teachgen --topic "Vectors" --plan-only
 
 # common options
 python -m teachgen --topic "Vectors" --audience "high-school students" \
-    --max-rounds 1 --no-parallel --run-dir runs
+    --max-rounds 3 --score-threshold 8.0 --no-parallel --run-dir runs
 ```
 
 ## Two phases
@@ -24,19 +24,62 @@ python -m teachgen --topic "Vectors" --audience "high-school students" \
   per-segment spoken narration) → a `LessonPlan` that routes each segment to a
   renderer. Written to `runs/<topic>/lesson_plan.json` — review/edit before Phase 2.
 - **Phase 2 — produce (media).** per segment: narrate (TTS + word timings) and render
-  the visual → composite → an MLLM watches the result and proposes **targeted** fixes
-  → loop. Output at `runs/<topic>/video/final.mp4`.
+  the visual → composite → nested feedback loop → `runs/<topic>/video/final.mp4`.
 
 ```
-cli → pipeline ──┬─ planner:  content_writer → route ─────────────► LessonPlan
-                 └─ produce:  narrator + renderers → compositor ──► final.mp4
-                                                       │
-                              feedback: reviewer → router (re-render only what's broken)
+cli → pipeline ──┬─ planner:  content_writer → route ──────────────────► LessonPlan
+                 └─ produce:  narrator + renderers → compositor ───────► draft.mp4
+                                                          │
+                                                    outer_reviewer
+                                                    (score / classify)
+                                                    │           │
+                                              content_issues  visual_issues
+                                                    │               │
+                                             plan_refiner    visual_refiner
+                                            (Inner Loop 1)  (Inner Loop 2)
+                                                    │               │
+                                             re-TTS + re-render   re-render only
+                                                    └───────────────┘
+                                                      next outer round
 ```
 
 Everything generative (text, structured, vision, TTS, image) goes through one
 `Provider` (`providers/openai_provider.py`) — that is why a single key suffices.
 Vision review samples frames from the mp4 (OpenAI can't ingest video directly).
+
+## Nested feedback loop
+
+Phase 2 runs an **outer loop** (default ≤ 3 rounds) that drives two **inner loops**
+based on what the reviewer finds wrong. Rounds stop early once `overall_score ≥
+score_threshold` (default 8.0 / 10).
+
+```
+Outer loop  (≤ max_outer_rounds, stops when score ≥ score_threshold)
+│
+│  composite draft → OuterReviewer watches full video
+│  → overall_score, content_issues[], visual_issues[]
+│
+├─ Inner Loop 1 — Plan refinement  (if content_issues)
+│    plan_refiner rewrites narration and/or visual_brief for affected segments.
+│    • narration changed → audio + visual both regenerate (re-TTS + re-render)
+│    • visual_brief changed → visual only regenerates (audio reused)
+│
+└─ Inner Loop 2 — Visual refinement  (if visual_issues)
+     visual_refiner rewrites visual_brief for rendering-broken segments.
+     • audio is always reused (narration unchanged)
+     • only visual cache is cleared → re-render only
+```
+
+**Issue classification** — the outer reviewer pre-classifies every problem:
+
+| Category | Meaning | Fixed by |
+|---|---|---|
+| `content_issues` | narration wrong/unclear, or visual_brief too vague | Inner Loop 1 |
+| `visual_issues` | rendering broken/ugly, but the approach is right | Inner Loop 2 |
+
+The two inner loops are independent: a round can trigger both, one, or neither.
+Each loop invalidates only the minimum cache entries needed, so unchanged segments
+are never re-produced.
 
 ## The three renderers (plugins in `renderers/`)
 
@@ -65,6 +108,14 @@ Vision review samples frames from the mp4 (OpenAI can't ingest video directly).
 
 The pipeline, compositor, and feedback loop don't change.
 
+## CLI options (feedback)
+
+| Flag | Default | Effect |
+|---|---|---|
+| `--no-feedback` | off | Skip the entire feedback loop |
+| `--max-rounds N` | 3 | Cap on outer loop iterations |
+| `--score-threshold F` | 8.0 | Stop early when `overall_score ≥ F` |
+
 ## Requirements
 
 See `requirements.txt`. Summary:
@@ -87,7 +138,13 @@ teachgen/
   renderers/   base + slide + concept_image + animation
   audio/       narrator (TTS + word timings)
   compositor/  compositor (visuals + audio -> mp4, yuv420p + faststart)
-  feedback/    reviewer (MLLM watches frames) + router (targeted re-render)
+  feedback/
+    _frames.py          shared video-frame sampler
+    outer_reviewer.py   holistic video review → overall_score + classified issues
+    plan_refiner.py     Inner Loop 1: rewrite narration / visual_brief
+    visual_refiner.py   Inner Loop 2: rewrite visual_brief for broken renders
+    reviewer.py         (legacy single-pass reviewer, kept for reference)
+    router.py           (legacy router, kept for reference)
 ```
 
 The `animation` renderer reuses `../code2video/` (agent.py + its `prompts/` and

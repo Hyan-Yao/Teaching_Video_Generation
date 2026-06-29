@@ -20,7 +20,7 @@ class ModelConfig:
     vision: str = "gpt-4o"          # MLLM reviewer (reads sampled video frames)
     tts: str = "gpt-4o-mini-tts"    # narration synthesis
     transcribe: str = "whisper-1"   # word-level timestamps for A/V alignment
-    image: str = "gpt-image-1"      # concept_image renderer
+    image: str = "gpt-image-2"      # concept_image renderer
 
 
 @dataclass
@@ -36,7 +36,8 @@ class Config:
 
     # Feedback loop
     use_feedback: bool = True
-    max_feedback_rounds: int = 2
+    max_outer_rounds: int = 3       # outer loop cap
+    score_threshold: float = 8.0   # stop early when overall_score >= this
 
     # Execution
     parallel: bool = True
@@ -56,7 +57,7 @@ class Config:
                 "OPENAI_API_KEY is not set. Export it first:\n"
                 "    export OPENAI_API_KEY=sk-..."
             )
-        cfg = cls(topic=topic, api_key=api_key, **overrides)
+        cfg = cls(topic=topic, api_key=api_key, **overrides)  # type: ignore[arg-type]
         cfg.run_dir = Path(cfg.run_dir) / _safe_slug(topic)
         return cfg
 

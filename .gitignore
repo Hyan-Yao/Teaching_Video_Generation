@@ -2,6 +2,8 @@
 __trashcan__/
 .gitignore
 
+code2video/assets/
+
 __pycache__/
 *.py[cod]
 *$py.class

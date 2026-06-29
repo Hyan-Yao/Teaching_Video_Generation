@@ -199,7 +199,7 @@ def process_storyboard_with_assets(
 
 
 if __name__ == "__main__":
-    from gpt_request import request_gpt41_token
+    from gpt_request import request_llm
 
     sb = {
         "sections": [
@@ -214,6 +214,6 @@ if __name__ == "__main__":
         ]
     }
 
-    downloader = SmartSVGDownloader("./assets/icon", request_gpt41_token, "Your API token")
+    downloader = SmartSVGDownloader("./assets/icon", request_llm, "Your API token")
     result = downloader.process_storyboard(sb)
     print(json.dumps(result, indent=2, ensure_ascii=False))
