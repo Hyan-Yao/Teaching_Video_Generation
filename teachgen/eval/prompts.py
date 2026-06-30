@@ -11,9 +11,15 @@ Identify:
 Rules:
 - Do not assign rubric scores.
 - Do not infer the objectives of the entire lecture.
+- Extract only what is directly visible or audible in this chunk. Do not add
+  expected concepts, missing concepts, or judgments about lesson quality.
+- Prefer short, literal descriptions over broad interpretations. If two
+  descriptions are possible, choose the more conservative one.
 - Use timestamps relative to this video chunk.
 - The only valid timestamp range is the chunk range supplied in the user
   message. Never report evidence outside that range.
+- Every evidence item must satisfy 0 <= start_time_seconds <= end_time_seconds
+  <= chunk end time. Never return an end time earlier than the start time.
 - If an event seems outside the supplied chunk range, omit it.
 - Every evidence item must describe one specific observation.
 - Report possible accuracy issues cautiously. Use an empty list when none are found.
@@ -32,9 +38,16 @@ Identify:
 Rules:
 - Do not assign rubric scores.
 - Do not judge the entire lecture.
+- Extract only what is directly visible or audible in this chunk. Do not add
+  expected visuals, missing concepts, or global instructional judgments.
+- Prefer short, literal descriptions of the actual visual/audio relationship.
+  If unsure whether a visual supports learning, describe the observed alignment
+  conservatively.
 - Use timestamps relative to this video chunk.
 - The only valid timestamp range is the chunk range supplied in the user
   message. Never report evidence outside that range.
+- Every evidence item must satisfy 0 <= start_time_seconds <= end_time_seconds
+  <= chunk end time. Never return an end time earlier than the start time.
 - If an event seems outside the supplied chunk range, omit it.
 - Every evidence item must describe one specific observation.
 - Use empty lists when no relevant evidence exists.
@@ -57,6 +70,9 @@ Identify:
 Rules:
 - Report observable pedagogical behavior, not final rubric scores.
 - Do not infer the intended Bloom or ICAP level of the entire lecture.
+- Extract only what is directly visible or audible in this chunk. Do not add
+  expected pedagogy, missing activities, or judgments about overall lesson
+  quality.
 - Bloom signals must describe the specific cognitive action encouraged, such as
   recalling, explaining, applying, comparing, evaluating, or creating.
 - Place cognitive actions merely announced by the instructor in
@@ -70,6 +86,8 @@ Rules:
 - Use timestamps relative to this video chunk.
 - The only valid timestamp range is the chunk range supplied in the user
   message. Never report evidence outside that range.
+- Every evidence item must satisfy 0 <= start_time_seconds <= end_time_seconds
+  <= chunk end time. Never return an end time earlier than the start time.
 - If an event seems outside the supplied chunk range, omit it.
 - Every evidence item must describe one specific observation.
 - Use empty lists when no relevant evidence exists.
@@ -90,6 +108,8 @@ Determine:
 
 Rules:
 - Base every inference on supporting timestamped evidence.
+- Summarize only what this chunk actually supports. Do not strengthen brief
+  mentions into detailed explanations, demonstrations, or applications.
 - Build observed_concepts from the chunk's definitions, claims, examples,
   demonstrations, and activities. Classify each observed depth as mention,
   brief_explanation, detailed_explanation, demonstration, or application.
@@ -97,6 +117,8 @@ Rules:
   inferred objective, so later lecture-level coverage analysis can use them.
 - Do not assign rubric scores.
 - Do not infer conclusions about the entire lecture.
+- Do not add expected concepts, missing objectives, or whole-lecture
+  improvement suggestions in section-level fields.
 - Distinguish announced future goals from learning actions actually supported.
 - Infer local learning objectives from what the section actually teaches or
   enables, not solely from goals announced for later sections.
@@ -129,6 +151,15 @@ Determine:
 
 Rules:
 - Use provided metadata when available, but verify it against lecture evidence.
+- Treat provided learning_objectives and student_persona as deterministic
+  source-of-truth targets when they are present in the metadata.
+- Only infer learning objectives when the metadata provides no
+  learning_objectives. When objectives are provided, copy their meaning into
+  learning_objectives and use lecture evidence only to determine whether each
+  objective appears supported.
+- Only infer learner background when student_persona is missing. When
+  student_persona is provided, use it as the primary learner profile and do not
+  replace it with an easier or harder inferred audience.
 - Mark conclusions as provided, inferred, or mixed.
 - Use source='provided' only when the conclusion comes directly from provided
   metadata.
@@ -144,6 +175,10 @@ Rules:
 - Build expected_concepts independently using provided metadata when available
   and subject-matter knowledge when metadata is missing. Do not limit expected
   concepts to topics that appeared in the lecture.
+- When learning_objectives are provided, derive expected_concepts from those
+  objectives and the course_requirement text. Do not expand the expected scope
+  with optional supporting topics unless they are clearly required for the
+  provided objectives and short-video scope.
 - For each expected concept, identify whether it is core, a required
   prerequisite, or supporting, and state the depth reasonably expected for this
   lecture's scope, duration, audience, and intended Bloom level.
@@ -169,6 +204,9 @@ Rules:
 - Learning objectives should describe what the lecture actually enables the
   learner to do. Announced but unsupported future goals may inform intended
   scope, but must not be treated as achieved objectives.
+- When provided learning objectives exist, do not replace them with objectives
+  inferred from the produced video. Preserve the provided objectives as targets
+  even if the video only partially supports them.
 - Intended Bloom level should reflect the cognitive outcome the lecture appears
   designed to pursue. Separately consider the Bloom levels actually supported
   by the section evidence.

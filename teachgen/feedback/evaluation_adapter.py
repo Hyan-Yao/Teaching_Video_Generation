@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -62,9 +63,11 @@ def adapt_evaluation_to_review(
     provider: Provider,
     result: EvaluationResult,
     plan: LessonPlan,
+    *,
+    debug_dir: Path | None = None,
 ) -> ReviewResult:
     """Ask an LLM to choose repairable findings, then map timestamps to segments."""
-    repair_plan = _plan_repairs(provider, result)
+    repair_plan = _plan_repairs(provider, result, debug_dir=debug_dir)
     timeline = build_segment_timeline(plan, _video_duration(result))
 
     critiques: list[Critique] = []
@@ -134,13 +137,26 @@ def segment_for_timestamp(
     return timeline[-1].segment_id
 
 
-def _plan_repairs(provider: Provider, result: EvaluationResult) -> _RepairPlan:
+def _plan_repairs(
+    provider: Provider,
+    result: EvaluationResult,
+    *,
+    debug_dir: Path | None = None,
+) -> _RepairPlan:
     prompt = (
         "Evaluator scores and evidence:\n\n"
         f"{_format_scores(result.scores)}\n\n"
         "Return only repair candidates the current router can act on."
     )
-    return provider.chat_json(prompt, _RepairPlan, system=SYSTEM, max_tokens=2500)
+    repair_plan = provider.chat_json(prompt, _RepairPlan, system=SYSTEM, max_tokens=2500)
+    if debug_dir is not None:
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        (debug_dir / "repair_planner_system.txt").write_text(SYSTEM, encoding="utf-8")
+        (debug_dir / "repair_planner_prompt.txt").write_text(prompt, encoding="utf-8")
+        (debug_dir / "repair_plan.json").write_text(
+            repair_plan.model_dump_json(indent=2), encoding="utf-8"
+        )
+    return repair_plan
 
 
 def _format_scores(scores: list[RubricScore]) -> str:

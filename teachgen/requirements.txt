@@ -2,11 +2,14 @@
 # teachgen requirements
 # ---------------------------------------------------------------------------
 # Core orchestration + the slide/concept_image/audio/compositor paths.
-openai>=1.40            # single-key provider: chat, vision, TTS, whisper, images
 pydantic>=2.5           # data contracts (schema.py) + structured outputs
 moviepy>=1.0.3          # compositing + frame sampling (1.x and 2.x both supported)
 pillow>=10.0            # PIL slide rasterizer + frame encoding
 python-pptx>=0.6.23     # make_slide.py text parsing (imported by the slide renderer)
+
+# Optional legacy provider:
+#   pip install openai
+#   python -m teachgen --provider openai ...
 
 # ---------------------------------------------------------------------------
 # System packages (install with your OS package manager, NOT pip)

@@ -1,7 +1,7 @@
 """MLLM reviewer — watches the composited video and returns structured critiques.
 
-OpenAI can't ingest mp4 directly, so we sample frames uniformly and hand them to the
-vision model alongside the lesson plan (titles + narration). The reviewer judges
+We sample frames uniformly and hand them to the vision model alongside the lesson
+plan (titles + narration). The reviewer judges
 pacing, on-screen/spoken alignment, legibility, and modality fit, and tags each issue
 with a `fix_action` the router knows how to apply.
 """

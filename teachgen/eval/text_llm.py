@@ -1,4 +1,5 @@
 import os
+import hashlib
 from typing import TypeVar
 
 from openai import OpenAI
@@ -23,6 +24,8 @@ class TextLLM:
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            seed=12345,
             response_format={
                 "type": "json_schema",
                 "json_schema": {
@@ -31,6 +34,9 @@ class TextLLM:
                     "schema": output_model.model_json_schema(),
                 },
             },
+            extra_body={
+                "session_id": _stable_session_id(self.model, output_model.__name__, prompt),
+            },
         )
 
         answer = response.choices[0].message.content
@@ -38,3 +44,8 @@ class TextLLM:
             raise RuntimeError(f"Model {self.model} returned no content")
 
         return output_model.model_validate_json(answer)
+
+
+def _stable_session_id(model: str, schema_name: str, prompt: str) -> str:
+    key = f"{model}\n{schema_name}\n{prompt}".encode("utf-8")
+    return f"eval-{hashlib.sha256(key).hexdigest()[:32]}"

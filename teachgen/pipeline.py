@@ -150,6 +150,7 @@ def _render_segment(cfg, provider, seg: Segment, audio: NarrationAudio) -> Visua
             return asset
         except Exception as e:  # NotImplementedError included
             last_err = e
+            _log(f"   {seg.id}: {modality.value} failed: {type(e).__name__}: {e}")
     raise last_err  # all renderers failed for this segment
 
 

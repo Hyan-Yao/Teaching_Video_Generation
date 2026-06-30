@@ -1,12 +1,11 @@
 # teachgen
 
-**One OpenAI key + one topic → a narrated teaching video.** An orchestration layer
+**One OpenRouter key + one topic → a narrated teaching video.** An orchestration layer
 that unifies this repo's three production paths behind a single planner and a
 single-key provider, then narrates, composites, and self-reviews the result.
 
 ```bash
-export OPENAI_API_KEY=sk-...
-export OPENROUTER_API_KEY=sk-or-...     # required for evaluator modes
+export OPENROUTER_API_KEY=sk-or-...
 
 # full run
 python -m teachgen --topic "How the Fourier transform works"
@@ -47,8 +46,8 @@ cli → pipeline ──┬─ planner:  content_writer → route ─────
 ```
 
 Everything generative (text, structured, vision, TTS, image) goes through one
-`Provider` (`providers/openai_provider.py`) — that is why a single key suffices.
-Vision review samples frames from the mp4 (OpenAI can't ingest video directly).
+`Provider` (`providers/openrouter_provider.py`) — that is why a single key suffices.
+Vision review samples frames from the mp4 before sending them to the vision model.
 
 ## Evaluator Usage
 
@@ -93,7 +92,7 @@ runs/<topic>/evaluator_baseline/sections/
 | Modality        | Backend (reused from this repo)        | When the planner picks it          |
 |-----------------|----------------------------------------|------------------------------------|
 | `animation`     | **code2video** `code2video/agent.py` (Manim) | demos, derivations, processes — the workhorse |
-| `concept_image` | **concept_image.py** (gpt-image-1)     | intuition, metaphor, one big idea  |
+| `concept_image` | **concept_image.py** (`openai/gpt-image-1` through OpenRouter) | intuition, metaphor, one big idea  |
 | `slide`         | **make_slide.py** parsing + PIL raster | **final recap/summary ONLY**       |
 
 - `animation` drives code2video at **single-segment grain** (teachgen owns the
@@ -118,7 +117,7 @@ The pipeline, compositor, and feedback loop don't change.
 ## Requirements
 
 See `requirements.txt`. Summary:
-- **Python deps:** openai, pydantic, moviepy (1.x/2.x both work via `mpcompat.py`),
+- **Python deps:** pydantic, moviepy (1.x/2.x both work via `mpcompat.py`),
   pillow, python-pptx.
 - **System:** `ffmpeg` (compositing, frame sampling, audio probing).
 - **For `animation` only:** Manim Community (`manim`) + its native deps, plus
@@ -132,7 +131,7 @@ teachgen/
   cli.py / config.py / schema.py / pipeline.py / mpcompat.py
   make_slide.py        slide text -> (title, bullets, diagram); reused by the slide renderer
   concept_image.py     concept -> image-prompt helper; reused by the concept_image renderer
-  providers/   base + openai_provider (default) + gemini_provider (stub)
+  providers/   base + openrouter_provider (default) + openai_provider (legacy) + gemini_provider (stub)
   planner/     content_writer (narration) + route (modality routing)
   renderers/   base + slide + concept_image + animation
   audio/       narrator (TTS + word timings)
@@ -147,4 +146,32 @@ pipeline (the original TeachingMonster baseline, evaluation scripts, standalone
 runners) was archived under `../__trashcan__/`.
 
 > Security: `code2video/api_config.json` contains a real OpenAI key in git history — revoke
-> it and rely on the `OPENAI_API_KEY` env var instead.
+> it and rely on `OPENROUTER_API_KEY` for this pipeline instead.
+
+## Full Refinement Target
+
+```mermaid
+flowchart TD
+    A["Topic + Audience"] --> B["Planner"]
+    B --> C["Initial LessonPlan"]
+
+    C --> D["Plan Reviewer / Refiner"]
+    D --> E{"Plan good enough?"}
+    E -- "No" --> F["Revise LessonPlan"]
+    F --> D
+    E -- "Yes" --> G["Approved LessonPlan"]
+
+    G --> H["Produce Assets"]
+    H --> I["Draft Video"]
+
+    I --> J["Video Evaluator"]
+    J --> K{"Issues found?"}
+
+    K -- "No" --> L["Final Video"]
+
+    K -- "Asset issue" --> M["Re-render / retime / rewrite visual brief"]
+    M --> H
+
+    K -- "Plan issue" --> N["Revise LessonPlan"]
+    N --> D
+```

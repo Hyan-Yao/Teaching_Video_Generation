@@ -7,7 +7,7 @@ Two-step pipeline (mirrors how a careful designer works):
   STEP 1.  A GPT *text* model expands your short concept into a detailed,
            well-structured ENGLISH image prompt (composition, labels, style,
            colour palette, layout, aspect ratio).
-  STEP 2.  That prompt is sent to OpenAI's IMAGE API (gpt-image-1) to render
+  STEP 2.  That prompt is sent through OpenRouter's image endpoint to render
            a high-quality educational diagram, saved as PNG.
 
 WHY TWO STEPS
@@ -19,8 +19,8 @@ consistent house style.
 
 SETUP
 -----
-    pip install openai pillow
-    export OPENAI_API_KEY="sk-..."
+    pip install pillow
+    export OPENROUTER_API_KEY="sk-or-..."
 
 USAGE
 -----
@@ -48,15 +48,11 @@ pad/crop to an exact 16:9 canvas with --exact-169 (needs Pillow).
 """
 
 import argparse
-import base64
 import os
 import sys
 import textwrap
 
-try:
-    from openai import OpenAI
-except ImportError:
-    sys.exit("Missing dependency. Run: pip install openai")
+from teachgen.providers.openrouter_http import OpenRouterClient, chat_text
 
 
 # ----------------------------------------------------------------------
@@ -95,10 +91,10 @@ def build_user_brief(concept: str, audience: str, style: str) -> str:
     return brief
 
 
-def generate_prompt(client: OpenAI, concept: str, audience: str,
+def generate_prompt(client: OpenRouterClient, concept: str, audience: str,
                     style: str, text_model: str) -> str:
     """STEP 1: ask a GPT text model to write the image prompt."""
-    resp = client.chat.completions.create(
+    resp = client.chat_completion(
         model=text_model,
         messages=[
             {"role": "system", "content": PROMPT_SYSTEM},
@@ -106,30 +102,21 @@ def generate_prompt(client: OpenAI, concept: str, audience: str,
         ],
         temperature=0.7,
     )
-    return resp.choices[0].message.content.strip()
+    return chat_text(resp)
 
 
 # ----------------------------------------------------------------------
 # STEP 2 — render the image from the prompt via the image API
 # ----------------------------------------------------------------------
-def generate_image(client: OpenAI, prompt: str, image_model: str,
+def generate_image(client: OpenRouterClient, prompt: str, image_model: str,
                    size: str, quality: str) -> bytes:
     """STEP 2: call the image API and return raw PNG bytes."""
-    result = client.images.generate(
+    return client.image_generation(
         model=image_model,
         prompt=prompt,
-        size=size,           # "1536x1024" = landscape, closest to 16:9
-        quality=quality,     # "low" | "medium" | "high" for gpt-image-1
-        n=1,
+        size=size,
+        quality=quality,
     )
-    b64 = result.data[0].b64_json
-    if b64:
-        return base64.b64decode(b64)
-    # Some models/endpoints return a URL instead of b64; fetch it.
-    import urllib.request
-    url = result.data[0].url
-    with urllib.request.urlopen(url) as r:
-        return r.read()
 
 
 # ----------------------------------------------------------------------
@@ -168,10 +155,10 @@ def main():
                     help="visual style hint, e.g. 'flat vector infographic'")
     ap.add_argument("-o", "--output", default="concept.png", help="output PNG path")
 
-    ap.add_argument("--text-model", default="gpt-4o-mini",
-                    help="GPT text model for step 1 (default: gpt-4o-mini)")
-    ap.add_argument("--image-model", default="gpt-image-1",
-                    help="image model for step 2 (default: gpt-image-1)")
+    ap.add_argument("--text-model", default="openai/gpt-4o-mini",
+                    help="OpenRouter text model for step 1 (default: openai/gpt-4o-mini)")
+    ap.add_argument("--image-model", default="openai/gpt-image-1",
+                    help="OpenRouter image model for step 2 (default: openai/gpt-image-1)")
     ap.add_argument("--size", default="1536x1024",
                     choices=["1536x1024", "1024x1024", "1024x1536"],
                     help="image size; 1536x1024 is landscape, closest to 16:9")
@@ -189,9 +176,9 @@ def main():
     need_client = not (args.raw_prompt and args.dry_run)
     client = None
     if need_client:
-        if not os.environ.get("OPENAI_API_KEY"):
-            sys.exit("Set OPENAI_API_KEY in your environment first.")
-        client = OpenAI()
+        if not os.environ.get("OPENROUTER_API_KEY"):
+            sys.exit("Set OPENROUTER_API_KEY in your environment first.")
+        client = OpenRouterClient()
 
     # ---- STEP 1: get the image prompt ----
     if args.raw_prompt:

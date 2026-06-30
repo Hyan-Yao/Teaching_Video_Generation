@@ -32,4 +32,9 @@ def review(
     result = EvaluationResult.model_validate_json(
         result_path.read_text(encoding="utf-8")
     )
-    return adapt_evaluation_to_review(provider, result, plan)
+    return adapt_evaluation_to_review(
+        provider,
+        result,
+        plan,
+        debug_dir=output_dir,
+    )

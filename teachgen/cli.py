@@ -1,6 +1,6 @@
 """One-key, one-topic entry point.
 
-    export OPENAI_API_KEY=sk-...
+    export OPENROUTER_API_KEY=sk-or-...
     python -m teachgen --topic "How the Fourier transform works"
 
 Options let you stop after Phase 1 (to review the plan), tune the feedback loop, or
@@ -21,7 +21,11 @@ def main() -> None:
     ap = argparse.ArgumentParser(prog="teachgen", description=__doc__)
     ap.add_argument("--topic", required=True, help="the lesson topic")
     ap.add_argument("--audience", default="general learners")
-    ap.add_argument("--provider", default="openai", choices=["openai", "gemini"])
+    ap.add_argument("--provider", default="openrouter", choices=["openrouter", "openai", "gemini"])
+    ap.add_argument("--text-model", help="override the text/planning/routing model")
+    ap.add_argument("--vision-model", help="override the vision/reviewer model")
+    ap.add_argument("--tts-model", help="override the TTS model")
+    ap.add_argument("--image-model", help="override the image model")
     ap.add_argument("--no-feedback", action="store_true", help="skip the MLLM review loop")
     ap.add_argument(
         "--feedback-mode",
@@ -65,6 +69,14 @@ def main() -> None:
         max_workers=args.max_workers,
         run_dir=args.run_dir,
     )
+    if args.text_model:
+        cfg.models.text = args.text_model
+    if args.vision_model:
+        cfg.models.vision = args.vision_model
+    if args.tts_model:
+        cfg.models.tts = args.tts_model
+    if args.image_model:
+        cfg.models.image = args.image_model
 
     if args.plan_only:
         cfg.ensure_dirs()

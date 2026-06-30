@@ -1,6 +1,6 @@
 # Teaching Video Generator
 
-**One OpenAI key + one topic → a narrated teaching video.**
+**One OpenRouter key + one topic → a narrated teaching video.**
 
 This repo has two parts:
 
@@ -14,8 +14,7 @@ This repo has two parts:
 
 ```bash
 pip install -r requirements.txt          # core deps (+ system ffmpeg)
-export OPENAI_API_KEY=sk-...
-export OPENROUTER_API_KEY=sk-or-...     # required for evaluator modes
+export OPENROUTER_API_KEY=sk-or-...
 
 python -m teachgen --topic "How the Fourier transform works"
 
@@ -41,7 +40,7 @@ renderers, evaluator usage, and how to extend it.
 ## Code logic
 
 The whole run is driven by `teachgen/pipeline.py::generate(cfg)`, which builds a single
-`Provider` (one OpenAI key behind one interface) and executes two phases. Every stage
+`Provider` (one OpenRouter key behind one interface) and executes two phases. Every stage
 communicates only through the pydantic schema objects in `teachgen/schema.py`
 (`LessonPlan`, `Segment`, `VisualAsset`, `NarrationAudio`, `ReviewResult`) — never
 through each other's internals. That decoupling is what lets renderers be swapped and
@@ -87,7 +86,7 @@ static images to the narration duration and freezes/pads animation clips to fit,
 writes an H.264 mp4 (`yuv420p + faststart`).
 
 **Feedback loop.** Unless `use_feedback` is off, `reviewer.review` samples 12 frames from
-the composite (OpenAI can't ingest mp4 directly), has the vision model critique
+the composite, has the vision model critique
 clarity / alignment / pacing, and structures the notes into a `ReviewResult`. If there
 are no blocking issues the draft is finalized; otherwise `router.apply` converts each
 blocking critique into the smallest change (`rewrite_narration`, `replan`, `re_render`,

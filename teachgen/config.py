@@ -1,8 +1,7 @@
 """Single source of configuration.
 
-The whole point of teachgen is "one OpenAI key + one topic". Everything funnels
-through here: the API key comes from the environment, model names have sane
-defaults, and all paths hang off one run directory.
+Everything funnels through here: the API key comes from the environment, model
+names have sane defaults, and all paths hang off one run directory.
 """
 
 from __future__ import annotations
@@ -14,13 +13,13 @@ from pathlib import Path
 
 @dataclass
 class ModelConfig:
-    """Which concrete models the default OpenAI provider should use."""
+    """Which concrete models the default OpenRouter provider should use."""
 
-    text: str = "gpt-4o"            # planning, content writing, routing
-    vision: str = "gpt-4o"          # MLLM reviewer (reads sampled video frames)
-    tts: str = "gpt-4o-mini-tts"    # narration synthesis
-    transcribe: str = "whisper-1"   # word-level timestamps for A/V alignment
-    image: str = "gpt-image-1"      # concept_image renderer
+    text: str = "openai/gpt-4o"                # planning, content writing, routing
+    vision: str = "openai/gpt-4o"              # MLLM reviewer (reads sampled frames)
+    tts: str = "x-ai/grok-voice-tts-1.0"       # narration synthesis
+    transcribe: str = ""                       # only used by the optional OpenAI provider
+    image: str = "openai/gpt-image-1"          # concept_image renderer
 
 
 @dataclass
@@ -29,7 +28,7 @@ class Config:
 
     topic: str
     audience: str = "general learners"
-    provider: str = "openai"        # "openai" (default) | "gemini"
+    provider: str = "openrouter"    # "openrouter" (default) | "openai" | "gemini"
     api_key: str = ""
 
     models: ModelConfig = field(default_factory=ModelConfig)
@@ -55,11 +54,14 @@ class Config:
 
     @classmethod
     def from_env(cls, topic: str, **overrides) -> "Config":
-        api_key = os.environ.get("OPENAI_API_KEY", "")
-        if not api_key and overrides.get("provider", "openai") == "openai":
+        provider = overrides.get("provider", "openrouter")
+        env_name = "OPENROUTER_API_KEY" if provider == "openrouter" else "OPENAI_API_KEY"
+        api_key = os.environ.get(env_name, "")
+        if not api_key and provider in {"openrouter", "openai"}:
+            example = "sk-or-..." if provider == "openrouter" else "sk-..."
             raise SystemExit(
-                "OPENAI_API_KEY is not set. Export it first:\n"
-                "    export OPENAI_API_KEY=sk-..."
+                f"{env_name} is not set. Export it first:\n"
+                f"    export {env_name}={example}"
             )
         cfg = cls(topic=topic, api_key=api_key, **overrides)
         cfg.run_dir = Path(cfg.run_dir) / _safe_slug(topic)

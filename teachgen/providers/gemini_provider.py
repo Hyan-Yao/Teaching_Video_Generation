@@ -3,7 +3,7 @@
 This exists to prove the Provider seam: the rest of teachgen never changes when
 you swap backends. Implemented as a thin adapter stub; fill in the bodies by
 delegating to src/gpt_request.py (request_gemini_token, request_gemini_video_img_token)
-and TeachingMonster's TTS if you want a non-OpenAI path.
+and TeachingMonster's TTS if you want a separate Gemini path.
 """
 
 from __future__ import annotations
@@ -39,4 +39,4 @@ class GeminiProvider:
         raise NotImplementedError("GeminiProvider.tts: wrap TeachingMonster TTSModule")
 
     def image(self, prompt, *, size="1536x1024", quality="high") -> bytes:
-        raise NotImplementedError("GeminiProvider.image: no native image gen; route to OpenAI")
+        raise NotImplementedError("GeminiProvider.image: no native image gen; route to OpenRouter")

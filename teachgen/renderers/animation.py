@@ -6,7 +6,7 @@ multi-section orchestration). Instead, per segment, we:
   1. Convert the segment into code2video's `Section` shape (short on-screen lecture
      lines, each paired with an animation description) via the Provider.
   2. Build a code2video RunConfig whose `api` callable is a shim over our Provider,
-     so the whole system still needs only one OpenAI key. code2video's own Gemini
+     so the whole system still needs only one OpenRouter key. code2video's own Gemini
      video-feedback loop is disabled (use_feedback=False) — teachgen's outer reviewer
      covers holistic feedback; the inner Manim bug-fix loop (ScopeRefine) stays on.
   3. Run generate_section_code() then render_section(), which renders Manim and runs
@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import shutil
 import sys
+import importlib.util
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -126,10 +127,19 @@ def _provider_api(ctx: RenderContext):
 
 def _load_code2video(repo_root: Path):
     """Lazy-import code2video/agent.py (pulls Manim). repo_root and code2video/ must import."""
-    for p in (str(repo_root), str(repo_root / "code2video")):
+    code2video_dir = repo_root / "code2video"
+    for p in (str(code2video_dir), str(repo_root)):
         if p not in sys.path:
             sys.path.insert(0, p)
-    import agent  # noqa: E402  (code2video/agent.py)
+
+    agent_path = code2video_dir / "agent.py"
+    spec = importlib.util.spec_from_file_location("teachgen_code2video_agent", agent_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load code2video agent from {agent_path}")
+    agent = importlib.util.module_from_spec(spec)
+    sys.modules["teachgen_code2video_agent"] = agent
+    spec.loader.exec_module(agent)
+
     from prompts import base_class  # noqa: E402  (repo_root/prompts)
 
     return agent, base_class
