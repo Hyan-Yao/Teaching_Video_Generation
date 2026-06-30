@@ -33,6 +33,12 @@ for mechanisms/processes and "concept_image" for intuition/metaphor.
 For each segment output: modality, a visual_brief (what the renderer should make,
 referencing the narration), a one-line rationale, and target_seconds (estimate from
 the narration length, ~2.5 words/sec).
+
+For concept_image briefs specifically: be concrete and visual — name the central
+metaphor or diagram type, list the key labeled components (2-5 items), describe
+the compositional flow (left-to-right, radial, top-down, etc.), and mention the
+color mood or contrast style. Vague briefs produce vague images; rich briefs
+produce rich illustrations.
 """
 
 

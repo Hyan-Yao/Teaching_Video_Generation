@@ -1,8 +1,8 @@
 """Provider abstraction — the 'one key' layer.
 
 Every model call (text, structured, vision, TTS, image) goes through a Provider.
-The default OpenRouterProvider routes everything through OpenRouter so a single
-OPENROUTER_API_KEY is all the user needs. Alternate backends implement the same
+The default OpenAIProvider routes everything through OpenAI so a single
+OPENAI_API_KEY is all the user needs. Alternate backends implement the same
 Protocol and are otherwise invisible to the rest of the system.
 """
 
@@ -13,10 +13,6 @@ from .base import Provider
 
 
 def get_provider(cfg: Config) -> Provider:
-    if cfg.provider == "openrouter":
-        from .openrouter_provider import OpenRouterProvider
-
-        return OpenRouterProvider(cfg)
     if cfg.provider == "openai":
         from .openai_provider import OpenAIProvider
 

@@ -1,6 +1,5 @@
 import base64
-import os
-import hashlib
+from io import BytesIO
 from pathlib import Path
 from openai import OpenAI
 from typing import TypeVar
@@ -9,12 +8,10 @@ from pydantic import BaseModel
 OutputModel = TypeVar("OutputModel", bound=BaseModel)
 
 class VideoLLM:
-    def __init__(self, model: str = "google/gemini-3.5-flash"):
+    def __init__(self, model: str = "gpt-4o", frame_count: int = 8):
         self.model = model
-        self.client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=os.environ["OPENROUTER_API_KEY"],
-        )
+        self.frame_count = frame_count
+        self.client = OpenAI()
 
     def analyze(
         self,
@@ -28,8 +25,7 @@ class VideoLLM:
         if not path.is_file():
             raise FileNotFoundError(f"Video not found: {path}")
 
-        encoded_video = base64.b64encode(path.read_bytes()).decode("utf-8")
-        video_url = f"data:video/mp4;base64,{encoded_video}"
+        frames = _sample_video_frames(path, self.frame_count)
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -38,10 +34,13 @@ class VideoLLM:
                     "role": "user",
                     "content": [
                         {"type": "text", "text": prompt},
-                        {
-                            "type": "video_url",
-                            "video_url": {"url": video_url},
-                        },
+                        *[
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": f"data:image/png;base64,{frame}"},
+                            }
+                            for frame in frames
+                        ],
                     ],
                 }
             ],
@@ -55,9 +54,6 @@ class VideoLLM:
                 "schema": output_model.model_json_schema()
             },
         },
-            extra_body={
-                "session_id": _stable_session_id(self.model, output_model.__name__, prompt),
-            },
         )
         answer = response.choices[0].message.content
         if not answer:
@@ -66,6 +62,23 @@ class VideoLLM:
         return output_model.model_validate_json(answer)
 
 
-def _stable_session_id(model: str, schema_name: str, prompt: str) -> str:
-    key = f"{model}\n{schema_name}\n{prompt}".encode("utf-8")
-    return f"eval-{hashlib.sha256(key).hexdigest()[:32]}"
+def _sample_video_frames(video_path: Path, frame_count: int) -> list[str]:
+    from PIL import Image
+    from teachgen.mpcompat import VideoFileClip
+
+    clip = VideoFileClip(str(video_path))
+    try:
+        duration = clip.duration or 0
+        if duration <= 0:
+            return []
+
+        frames: list[str] = []
+        for i in range(frame_count):
+            t = duration * (i + 0.5) / frame_count
+            frame = clip.get_frame(t)
+            buf = BytesIO()
+            Image.fromarray(frame).save(buf, format="PNG")
+            frames.append(base64.b64encode(buf.getvalue()).decode("utf-8"))
+        return frames
+    finally:
+        clip.close()

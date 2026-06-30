@@ -1,27 +1,21 @@
 # teachgen
 
-**One OpenRouter key + one topic → a narrated teaching video.** An orchestration layer
+**One OpenAI key + one topic → a narrated teaching video.** An orchestration layer
 that unifies this repo's three production paths behind a single planner and a
 single-key provider, then narrates, composites, and self-reviews the result.
 
 ```bash
-export OPENROUTER_API_KEY=sk-or-...
+export OPENAI_API_KEY=sk-...
 
 # full run
 python -m teachgen --topic "How the Fourier transform works"
-
-# use the evaluator to drive the feedback/refinement loop
-python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator
-
-# evaluator feedback + final evaluator report
-python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator --eval-baseline
 
 # inspect the plan before spending money on media
 python -m teachgen --topic "Vectors" --plan-only
 
 # common options
 python -m teachgen --topic "Vectors" --audience "high-school students" \
-    --max-rounds 1 --no-parallel --run-dir runs
+    --max-rounds 3 --score-threshold 8.0 --no-parallel --run-dir runs
 ```
 
 ## Two phases
@@ -30,45 +24,80 @@ python -m teachgen --topic "Vectors" --audience "high-school students" \
   per-segment spoken narration) → a `LessonPlan` that routes each segment to a
   renderer. Written to `runs/<topic>/lesson_plan.json` — review/edit before Phase 2.
 - **Phase 2 — produce (media).** per segment: narrate (TTS + word timings) and render
-  the visual → composite → an MLLM watches the result and proposes **targeted** fixes
-  → loop. Output at `runs/<topic>/video/final.mp4`.
-- **Evaluator feedback mode.** `--feedback-mode evaluator` uses the evaluator during
-  the refinement loop and passes adapted evaluator feedback into the existing router.
-- **Optional evaluator baseline.** `--eval-baseline` runs the evaluator after the
-  final video is produced and writes `runs/<topic>/evaluator_baseline/evaluation_result.json`.
+  the visual → composite → nested feedback loop → `runs/<topic>/video/final.mp4`.
 
 ```
-cli → pipeline ──┬─ planner:  content_writer → route ─────────────► LessonPlan
-                 └─ produce:  narrator + renderers → compositor ──► final.mp4
-                                                       │
-                              feedback: reviewer → router (re-render only what's broken)
-                              optional: evaluator baseline report
+cli → pipeline ──┬─ planner:  content_writer → route ──────────────────► LessonPlan
+                 └─ produce:  narrator + renderers → compositor ───────► draft.mp4
+                                                          │
+                                                    outer_reviewer
+                                                    (score / classify)
+                                                    │           │
+                                              content_issues  visual_issues
+                                                    │               │
+                                             plan_refiner    visual_refiner
+                                            (Inner Loop 1)  (Inner Loop 2)
+                                                    │               │
+                                             re-TTS + re-render   re-render only
+                                                    └───────────────┘
+                                                      next outer round
 ```
 
 Everything generative (text, structured, vision, TTS, image) goes through one
-`Provider` (`providers/openrouter_provider.py`) — that is why a single key suffices.
-Vision review samples frames from the mp4 before sending them to the vision model.
+`Provider` (`providers/openai_provider.py`) — that is why a single key suffices.
+Vision review samples frames from the mp4 (OpenAI can't ingest video directly).
+
+## Nested feedback loop
+
+Phase 2 runs an **outer loop** (default ≤ 3 rounds) that drives two **inner loops**
+based on what the reviewer finds wrong. Rounds stop early once `overall_score ≥
+score_threshold` (default 8.0 / 10).
+
+```
+Outer loop  (≤ max_outer_rounds, stops when score ≥ score_threshold)
+│
+│  composite draft → OuterReviewer watches full video
+│  → overall_score, content_issues[], visual_issues[]
+│
+├─ Inner Loop 1 — Plan refinement  (if content_issues)
+│    plan_refiner rewrites narration and/or visual_brief for affected segments.
+│    • narration changed → audio + visual both regenerate (re-TTS + re-render)
+│    • visual_brief changed → visual only regenerates (audio reused)
+│
+└─ Inner Loop 2 — Visual refinement  (if visual_issues)
+     visual_refiner rewrites visual_brief for rendering-broken segments.
+     • audio is always reused (narration unchanged)
+     • only visual cache is cleared → re-render only
+```
+
+**Issue classification** — the outer reviewer pre-classifies every problem:
+
+| Category | Meaning | Fixed by |
+|---|---|---|
+| `content_issues` | narration wrong/unclear, or visual_brief too vague | Inner Loop 1 |
+| `visual_issues` | rendering broken/ugly, but the approach is right | Inner Loop 2 |
+
+The two inner loops are independent: a round can trigger both, one, or neither.
+Each loop invalidates only the minimum cache entries needed, so unchanged segments
+are never re-produced.
 
 ## Evaluator Usage
 
-Use the evaluator for feedback/refinement:
+Use the evaluator as the outer reviewer for the nested feedback/refinement loop:
 
 ```bash
 python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator
 ```
 
-This saves:
+This saves evaluator outputs under per-round directories:
 
 ```text
-runs/<topic>/video/draft_r0.mp4
-runs/<topic>/video/final.mp4
 runs/<topic>/evaluator_feedback_r0/evaluation_result.json
-runs/<topic>/evaluator_feedback_r1/evaluation_result.json
+runs/<topic>/evaluator_feedback_r0/repair_plan.json
 runs/<topic>/review_r0.json
-runs/<topic>/review_r1.json
 ```
 
-To also run the evaluator on the final video after refinement:
+To also run the evaluator on the final produced video after refinement:
 
 ```bash
 python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator --eval-baseline
@@ -82,9 +111,6 @@ runs/<topic>/evaluator_baseline/content_grades.json
 runs/<topic>/evaluator_baseline/presentation_grades.json
 runs/<topic>/evaluator_baseline/pedagogy_grades.json
 runs/<topic>/evaluator_baseline/lecture.json
-runs/<topic>/evaluator_baseline/chunks/
-runs/<topic>/evaluator_baseline/chunk_analyses/
-runs/<topic>/evaluator_baseline/sections/
 ```
 
 ## The three renderers (plugins in `renderers/`)
@@ -92,7 +118,7 @@ runs/<topic>/evaluator_baseline/sections/
 | Modality        | Backend (reused from this repo)        | When the planner picks it          |
 |-----------------|----------------------------------------|------------------------------------|
 | `animation`     | **code2video** `code2video/agent.py` (Manim) | demos, derivations, processes — the workhorse |
-| `concept_image` | **concept_image.py** (`openai/gpt-image-1` through OpenRouter) | intuition, metaphor, one big idea  |
+| `concept_image` | **concept_image.py** (gpt-image-1)     | intuition, metaphor, one big idea  |
 | `slide`         | **make_slide.py** parsing + PIL raster | **final recap/summary ONLY**       |
 
 - `animation` drives code2video at **single-segment grain** (teachgen owns the
@@ -114,10 +140,18 @@ runs/<topic>/evaluator_baseline/sections/
 
 The pipeline, compositor, and feedback loop don't change.
 
+## CLI options (feedback)
+
+| Flag | Default | Effect |
+|---|---|---|
+| `--no-feedback` | off | Skip the entire feedback loop |
+| `--max-rounds N` | 3 | Cap on outer loop iterations |
+| `--score-threshold F` | 8.0 | Stop early when `overall_score ≥ F` |
+
 ## Requirements
 
 See `requirements.txt`. Summary:
-- **Python deps:** pydantic, moviepy (1.x/2.x both work via `mpcompat.py`),
+- **Python deps:** openai, pydantic, moviepy (1.x/2.x both work via `mpcompat.py`),
   pillow, python-pptx.
 - **System:** `ffmpeg` (compositing, frame sampling, audio probing).
 - **For `animation` only:** Manim Community (`manim`) + its native deps, plus
@@ -131,12 +165,18 @@ teachgen/
   cli.py / config.py / schema.py / pipeline.py / mpcompat.py
   make_slide.py        slide text -> (title, bullets, diagram); reused by the slide renderer
   concept_image.py     concept -> image-prompt helper; reused by the concept_image renderer
-  providers/   base + openrouter_provider (default) + openai_provider (legacy) + gemini_provider (stub)
+  providers/   base + openai_provider (default) + gemini_provider (stub)
   planner/     content_writer (narration) + route (modality routing)
   renderers/   base + slide + concept_image + animation
   audio/       narrator (TTS + word timings)
   compositor/  compositor (visuals + audio -> mp4, yuv420p + faststart)
-  feedback/    reviewer (MLLM watches frames) + router (targeted re-render)
+  feedback/
+    _frames.py          shared video-frame sampler
+    outer_reviewer.py   holistic video review → overall_score + classified issues
+    plan_refiner.py     Inner Loop 1: rewrite narration / visual_brief
+    visual_refiner.py   Inner Loop 2: rewrite visual_brief for broken renders
+    reviewer.py         (legacy single-pass reviewer, kept for reference)
+    router.py           (legacy router, kept for reference)
 ```
 
 The `animation` renderer reuses `../code2video/` (agent.py + its `prompts/` and
@@ -146,32 +186,4 @@ pipeline (the original TeachingMonster baseline, evaluation scripts, standalone
 runners) was archived under `../__trashcan__/`.
 
 > Security: `code2video/api_config.json` contains a real OpenAI key in git history — revoke
-> it and rely on `OPENROUTER_API_KEY` for this pipeline instead.
-
-## Full Refinement Target
-
-```mermaid
-flowchart TD
-    A["Topic + Audience"] --> B["Planner"]
-    B --> C["Initial LessonPlan"]
-
-    C --> D["Plan Reviewer / Refiner"]
-    D --> E{"Plan good enough?"}
-    E -- "No" --> F["Revise LessonPlan"]
-    F --> D
-    E -- "Yes" --> G["Approved LessonPlan"]
-
-    G --> H["Produce Assets"]
-    H --> I["Draft Video"]
-
-    I --> J["Video Evaluator"]
-    J --> K{"Issues found?"}
-
-    K -- "No" --> L["Final Video"]
-
-    K -- "Asset issue" --> M["Re-render / retime / rewrite visual brief"]
-    M --> H
-
-    K -- "Plan issue" --> N["Revise LessonPlan"]
-    N --> D
-```
+> it and rely on the `OPENAI_API_KEY` env var instead.

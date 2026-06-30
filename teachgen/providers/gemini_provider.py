@@ -39,4 +39,4 @@ class GeminiProvider:
         raise NotImplementedError("GeminiProvider.tts: wrap TeachingMonster TTSModule")
 
     def image(self, prompt, *, size="1536x1024", quality="high") -> bytes:
-        raise NotImplementedError("GeminiProvider.image: no native image gen; route to OpenRouter")
+        raise NotImplementedError("GeminiProvider.image: no native image generation")

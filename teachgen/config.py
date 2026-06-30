@@ -13,13 +13,13 @@ from pathlib import Path
 
 @dataclass
 class ModelConfig:
-    """Which concrete models the default OpenRouter provider should use."""
+    """Which concrete models the default OpenAI provider should use."""
 
-    text: str = "openai/gpt-4o"                # planning, content writing, routing
-    vision: str = "openai/gpt-4o"              # MLLM reviewer (reads sampled frames)
-    tts: str = "x-ai/grok-voice-tts-1.0"       # narration synthesis
-    transcribe: str = ""                       # only used by the optional OpenAI provider
-    image: str = "openai/gpt-image-1"          # concept_image renderer
+    text: str = "gpt-4o"            # planning, content writing, routing
+    vision: str = "gpt-4o"          # MLLM reviewer (reads sampled video frames)
+    tts: str = "gpt-4o-mini-tts"    # narration synthesis
+    transcribe: str = "whisper-1"   # word-level timestamps for A/V alignment
+    image: str = "gpt-image-2"      # concept_image renderer
 
 
 @dataclass
@@ -28,7 +28,7 @@ class Config:
 
     topic: str
     audience: str = "general learners"
-    provider: str = "openrouter"    # "openrouter" (default) | "openai" | "gemini"
+    provider: str = "openai"        # "openai" (default) | "gemini"
     api_key: str = ""
 
     models: ModelConfig = field(default_factory=ModelConfig)
@@ -36,7 +36,8 @@ class Config:
     # Feedback loop
     use_feedback: bool = True
     feedback_mode: str = "original"  # "original" | "evaluator" | "none"
-    max_feedback_rounds: int = 2
+    max_outer_rounds: int = 3       # outer loop cap
+    score_threshold: float = 8.0   # stop early when overall_score >= this
 
     # Optional post-run evaluator output
     run_evaluator_baseline: bool = False
@@ -54,16 +55,15 @@ class Config:
 
     @classmethod
     def from_env(cls, topic: str, **overrides) -> "Config":
-        provider = overrides.get("provider", "openrouter")
-        env_name = "OPENROUTER_API_KEY" if provider == "openrouter" else "OPENAI_API_KEY"
+        provider = overrides.get("provider", "openai")
+        env_name = "OPENAI_API_KEY"
         api_key = os.environ.get(env_name, "")
-        if not api_key and provider in {"openrouter", "openai"}:
-            example = "sk-or-..." if provider == "openrouter" else "sk-..."
+        if not api_key and provider == "openai":
             raise SystemExit(
                 f"{env_name} is not set. Export it first:\n"
-                f"    export {env_name}={example}"
+                f"    export {env_name}=sk-..."
             )
-        cfg = cls(topic=topic, api_key=api_key, **overrides)
+        cfg = cls(topic=topic, api_key=api_key, **overrides)  # type: ignore[arg-type]
         cfg.run_dir = Path(cfg.run_dir) / _safe_slug(topic)
         return cfg
 

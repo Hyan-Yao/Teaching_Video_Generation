@@ -1,6 +1,6 @@
 # Teaching Video Generator
 
-**One OpenRouter key + one topic → a narrated teaching video.**
+**One OpenAI key + one topic → a narrated teaching video.**
 
 This repo has two parts:
 
@@ -14,7 +14,7 @@ This repo has two parts:
 
 ```bash
 pip install -r requirements.txt          # core deps (+ system ffmpeg)
-export OPENROUTER_API_KEY=sk-or-...
+export OPENAI_API_KEY=sk-...
 
 python -m teachgen --topic "How the Fourier transform works"
 
@@ -40,7 +40,7 @@ renderers, evaluator usage, and how to extend it.
 ## Code logic
 
 The whole run is driven by `teachgen/pipeline.py::generate(cfg)`, which builds a single
-`Provider` (one OpenRouter key behind one interface) and executes two phases. Every stage
+`Provider` (one OpenAI key behind one interface) and executes two phases. Every stage
 communicates only through the pydantic schema objects in `teachgen/schema.py`
 (`LessonPlan`, `Segment`, `VisualAsset`, `NarrationAudio`, `ReviewResult`) — never
 through each other's internals. That decoupling is what lets renderers be swapped and

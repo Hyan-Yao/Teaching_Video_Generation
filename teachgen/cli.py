@@ -1,6 +1,6 @@
 """One-key, one-topic entry point.
 
-    export OPENROUTER_API_KEY=sk-or-...
+    export OPENAI_API_KEY=sk-...
     python -m teachgen --topic "How the Fourier transform works"
 
 Options let you stop after Phase 1 (to review the plan), tune the feedback loop, or
@@ -11,6 +11,10 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
+
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from .config import Config
 from .pipeline import generate, phase1_plan
@@ -21,7 +25,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(prog="teachgen", description=__doc__)
     ap.add_argument("--topic", required=True, help="the lesson topic")
     ap.add_argument("--audience", default="general learners")
-    ap.add_argument("--provider", default="openrouter", choices=["openrouter", "openai", "gemini"])
+    ap.add_argument("--provider", default="openai", choices=["openai", "gemini"])
     ap.add_argument("--text-model", help="override the text/planning/routing model")
     ap.add_argument("--vision-model", help="override the vision/reviewer model")
     ap.add_argument("--tts-model", help="override the TTS model")
@@ -31,9 +35,11 @@ def main() -> None:
         "--feedback-mode",
         choices=["original", "evaluator", "none"],
         default="original",
-        help="which feedback reviewer to use during refinement",
+        help="which outer reviewer to use during refinement",
     )
-    ap.add_argument("--max-rounds", type=int, default=2, help="max feedback rounds")
+    ap.add_argument("--max-rounds", type=int, default=3, help="max outer feedback rounds")
+    ap.add_argument("--score-threshold", type=float, default=8.0,
+                    help="stop early when overall score >= this (0-10)")
     ap.add_argument(
         "--eval-baseline",
         action="store_true",
@@ -62,7 +68,8 @@ def main() -> None:
         provider=args.provider,
         use_feedback=feedback_mode != "none",
         feedback_mode=feedback_mode,
-        max_feedback_rounds=args.max_rounds,
+        max_outer_rounds=args.max_rounds,
+        score_threshold=args.score_threshold,
         run_evaluator_baseline=args.eval_baseline,
         evaluator_chunk_seconds=args.eval_chunk_seconds,
         parallel=not args.no_parallel,

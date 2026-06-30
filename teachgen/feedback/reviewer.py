@@ -12,6 +12,7 @@ from pathlib import Path
 
 from ..providers.base import Provider
 from ..schema import LessonPlan, ReviewResult
+from ._frames import sample_frames
 
 SYSTEM = """\
 You are a meticulous teaching-video reviewer. You are shown frames sampled in order
@@ -35,7 +36,7 @@ Use severity "blocker" only for genuinely broken output. Also give an overall_sc
 def review(
     provider: Provider, plan: LessonPlan, video_path: Path, *, num_frames: int = 12
 ) -> ReviewResult:
-    frames = _sample_frames(video_path, num_frames)
+    frames = sample_frames(video_path, num_frames)
     plan_blob = "\n".join(
         f"{s.id} [{s.modality.value}] {s.title}: {s.narration}" for s in plan.segments
     )
@@ -55,24 +56,3 @@ def review(
     )
 
 
-def _sample_frames(video_path: Path, n: int) -> list[bytes]:
-    """Grab n evenly spaced frames from the video as PNG bytes."""
-    from ..mpcompat import VideoFileClip
-
-    clip = VideoFileClip(str(video_path))
-    try:
-        from io import BytesIO
-
-        from PIL import Image
-
-        dur = clip.duration
-        out: list[bytes] = []
-        for i in range(n):
-            t = dur * (i + 0.5) / n
-            frame = clip.get_frame(t)  # HxWx3 ndarray
-            buf = BytesIO()
-            Image.fromarray(frame).save(buf, format="PNG")
-            out.append(buf.getvalue())
-        return out
-    finally:
-        clip.close()

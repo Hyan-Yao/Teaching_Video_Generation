@@ -6,7 +6,7 @@ multi-section orchestration). Instead, per segment, we:
   1. Convert the segment into code2video's `Section` shape (short on-screen lecture
      lines, each paired with an animation description) via the Provider.
   2. Build a code2video RunConfig whose `api` callable is a shim over our Provider,
-     so the whole system still needs only one OpenRouter key. code2video's own Gemini
+     so the whole system still needs only one OpenAI key. code2video's own Gemini
      video-feedback loop is disabled (use_feedback=False) — teachgen's outer reviewer
      covers holistic feedback; the inner Manim bug-fix loop (ScopeRefine) stays on.
   3. Run generate_section_code() then render_section(), which renders Manim and runs

@@ -15,6 +15,7 @@ from prompts import *
 from utils import *
 from scope_refine import *
 from external_assets import process_storyboard_with_assets
+from slide_bg import create_background
 
 
 @dataclass
@@ -124,12 +125,11 @@ class TeachingVideoAgent:
 
     def _request_video_api_and_track_tokens(self, prompt, video_path):
         """Wraps video API requests and accumulates token usage automatically"""
-        response, usage = request_gemini_video_img(prompt=prompt, video_path=video_path, image_path=self.GRID_IMG_PATH)
-
-        if usage:
-            self.token_usage["prompt_tokens"] += usage.get("prompt_tokens", 0)
-            self.token_usage["completion_tokens"] += usage.get("completion_tokens", 0)
-            self.token_usage["total_tokens"] += usage.get("total_tokens", 0)
+        response = request_gpt5_video_img(prompt=prompt, video_path=video_path, image_path=self.GRID_IMG_PATH)
+        if response and hasattr(response, "usage") and response.usage:
+            self.token_usage["prompt_tokens"] += response.usage.prompt_tokens or 0
+            self.token_usage["completion_tokens"] += response.usage.completion_tokens or 0
+            self.token_usage["total_tokens"] += response.usage.total_tokens or 0
         return response
 
     def get_serializable_state(self):
@@ -436,7 +436,7 @@ class TeachingVideoAgent:
             return has_layout_issues, suggested_improvements
 
         try:
-            response = request_gemini_video_img(prompt=analysis_prompt, video_path=video_path, image_path=self.GRID_IMG_PATH)
+            response = request_gpt5_video_img(prompt=analysis_prompt, video_path=video_path, image_path=self.GRID_IMG_PATH)
             feedback_content = extract_answer_from_response(response)
             has_layout_issues, suggested_improvements = _parse_layout(feedback_content)
             feedback = VideoFeedback(
@@ -525,8 +525,15 @@ class TeachingVideoAgent:
 
         return self.section_codes
 
+    def _generate_section_bg(self, section: Section) -> None:
+        try:
+            create_background(self.output_dir / "bg.png")
+        except Exception as e:
+            print(f"⚠️ Background generation failed for {section.id}: {e}")
+
     def render_section(self, section: Section) -> bool:
         section_id = section.id
+        self._generate_section_bg(section)
 
         try:
             success = False
@@ -808,30 +815,8 @@ def run_Code2Video(
     print("=" * 50)
 
 
-def get_api_and_output(API_name):
-    mapping = {
-        "gpt-41": (request_gpt41_token, "Chatgpt41"),
-        "claude": (request_claude_token, "CLAUDE"),
-        "gpt-5": (request_gpt5_token, "Chatgpt5"),
-        "gpt-4o": (request_gpt4o_token, "Chatgpt4o"),
-        "gpt-o4mini": (request_o4mini_token, "Chatgpto4mini"),
-        "Gemini": (request_gemini_token, "Gemini"),
-    }
-    try:
-        return mapping[API_name]
-    except KeyError:
-        raise ValueError("Invalid API model name")
-
-
 def build_and_parse_args():
     parser = argparse.ArgumentParser()
-    # TODO: Core hyperparameters
-    parser.add_argument(
-        "--API",
-        type=str,
-        choices=["gpt-41", "claude", "gpt-5", "gpt-4o", "gpt-o4mini", "Gemini"],
-        default="gpt-41",
-    )
     parser.add_argument(
         "--folder_prefix",
         type=str,
@@ -865,18 +850,12 @@ def build_and_parse_args():
 if __name__ == "__main__":
     args = build_and_parse_args()
 
-    api, folder_name = get_api_and_output(args.API)
-    folder = Path(__file__).resolve().parent / "CASES" / f"{args.folder_prefix}_{folder_name}"
+    model_label = os.getenv("LLM_MODEL", "gpt-4o").replace("-", "").replace(".", "")
+    folder = Path(__file__).resolve().parent / "CASES" / f"{args.folder_prefix}_{model_label}"
 
-    _CFG_PATH = pathlib.Path(__file__).with_name("api_config.json")
-    with _CFG_PATH.open("r", encoding="utf-8") as _f:
-        _CFG = json.load(_f)
-    iconfinder_cfg = _CFG.get("iconfinder", {})
-    args.iconfinder_api_key = os.getenv("ICONFINDER_API_KEY", iconfinder_cfg.get("api_key"))
+    args.iconfinder_api_key = os.getenv("ICONFINDER_API_KEY", "")
     if args.iconfinder_api_key:
         print(f"Iconfinder API Key: {args.iconfinder_api_key}")
-    else:
-        print("WARNING: Iconfinder API key not found in config file. Using default (None).")
 
     if args.knowledge_point:
         print(f"🔄 Single knowledge point mode: {args.knowledge_point}")
@@ -891,7 +870,7 @@ if __name__ == "__main__":
         raise ValueError("Must provide --knowledge_point | --knowledge_file")
 
     cfg = RunConfig(
-        api=api,
+        api=request_llm,
         iconfinder_api_key=args.iconfinder_api_key,
         use_feedback=args.use_feedback,
         use_assets=args.use_assets,
