@@ -1,6 +1,6 @@
 # Teaching Video Generator
 
-**One OpenAI key + one topic → a narrated teaching video.**
+**One OpenAI key + one structured request → a narrated teaching video.**
 
 This repo has two parts:
 
@@ -16,16 +16,23 @@ This repo has two parts:
 pip install -r requirements.txt          # core deps (+ system ffmpeg)
 export OPENAI_API_KEY=sk-...
 
-python -m teachgen --topic "How the Fourier transform works"
+python -m teachgen --request-json examples/regression_request.json
 
-# use the evaluator to drive the feedback/refinement loop:
-python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator
+# same entry point when using uv
+uv run python -m teachgen --request-json examples/regression_request.json
 
-# evaluator feedback + final evaluator report:
-python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator --eval-baseline
+# use the evaluator as the outer video-level refiner
+python -m teachgen --request-json examples/regression_request.json --feedback-mode evaluator
 
-# just the plan (cheap), before producing media:
-python -m teachgen --topic "Vectors" --plan-only
+# enable the inner plan-level refiner before rendering
+python -m teachgen --request-json examples/regression_request.json --plan-refinement-mode evaluator
+
+# run both refiners and save a final evaluator report
+python -m teachgen --request-json examples/regression_request.json \
+  --plan-refinement-mode evaluator --feedback-mode evaluator --eval-baseline
+
+# just the plan (cheap), before producing media
+python -m teachgen --request-json examples/regression_request.json --plan-only
 ```
 
 The output video lands at `runs/<topic>/video/final.mp4`. With
@@ -50,7 +57,7 @@ the feedback loop target one segment at a time.
 cli → Config.from_env → pipeline.generate
         │
         ├─ Phase 1  phase1_plan
-        │     content_writer.write_content   topic+audience → objectives + spoken segments (text)
+        │     content_writer.write_content   structured request → objectives + spoken segments (text)
         │     route.plan_lesson              each segment → modality + visual_brief → LessonPlan
         │     _enforce_slide_only_last       hard rule: slide only on the final recap segment
         │     → runs/<topic>/lesson_plan.json   (human-inspectable checkpoint; --plan-only stops here)
@@ -60,11 +67,14 @@ cli → Config.from_env → pipeline.generate
                   narrator.narrate      narration → TTS audio + word timings (audio duration = segment length)
                   _render_segment       dispatch to planned renderer; fall back concept_image → slide on failure
               compositor.assemble   visuals + audio → draft_r<n>.mp4 / final.mp4
-              reviewer.review       sample 12 frames → MLLM critique → ReviewResult (score + fix_actions)
-              router.apply          turn blocking critiques into the smallest plan edit; return dirty segment ids
-                  → invalidate caches for changed segments only; loop re-does just those
+              --plan-refinement-mode evaluator
+                  plan_evaluator → lesson_plan_refiner → refined LessonPlan
+              --feedback-mode original
+                  reviewer.review → ReviewResult → router.apply
               --feedback-mode evaluator
-                  evaluator → ReviewResult → router.apply
+                  evaluator → outer_repair_decider
+                      ├─ plan repair  → lesson_plan_refiner → regenerate full video
+                      └─ asset repair → evaluation_adapter → router.apply
 ```
 
 **Phase 1 — plan (text only).** `content_writer` asks the model for objectives plus an
@@ -85,25 +95,36 @@ never injects a stray slide on a non-recap segment. `compositor.assemble` stretc
 static images to the narration duration and freezes/pads animation clips to fit, then
 writes an H.264 mp4 (`yuv420p + faststart`).
 
-**Feedback loop.** Unless `use_feedback` is off, `reviewer.review` samples 12 frames from
-the composite, has the vision model critique
-clarity / alignment / pacing, and structures the notes into a `ReviewResult`. If there
-are no blocking issues the draft is finalized; otherwise `router.apply` converts each
-blocking critique into the smallest change (`rewrite_narration`, `replan`, `re_render`,
-`adjust_timing`), mutates the plan in place, and returns the set of segment ids to redo.
-The pipeline drops only those ids from the caches and loops; the final round always
-writes `final.mp4`.
+**Inner plan refiner.** With `--plan-refinement-mode evaluator`, Phase 1 no longer
+stops at the first `LessonPlan`. The plan evaluator grades the plan against the
+structured request, and `lesson_plan_refiner` rewrites the plan before any media is
+rendered. Outputs land in:
+
+```text
+runs/<topic>/lesson_plan_initial.json
+runs/<topic>/plan_eval_r<n>.json
+runs/<topic>/lesson_plan_refined_r<n>.json
+```
+
+**Outer video refiner.** With `--feedback-mode evaluator`, the produced draft video is
+evaluated after each outer round. The evaluator drives one of two repair paths:
+
+- `plan` repair: low pedagogical/content metrics trigger a full lesson-plan revision,
+  then the whole video is regenerated from the revised plan.
+- `asset` repair: low visual/multimedia metrics are adapted into segment-level fixes
+  (`rewrite_narration`, `change_modality`, `re_render`, `adjust_timing`) and only
+  dirty segments are regenerated.
 
 **Evaluator mode.** To use the evaluator during refinement:
 
 ```bash
-python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator
+python -m teachgen --request-json examples/regression_request.json --feedback-mode evaluator
 ```
 
 To also save a final evaluator report after refinement:
 
 ```bash
-python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator --eval-baseline
+python -m teachgen --request-json examples/regression_request.json --feedback-mode evaluator --eval-baseline
 ```
 
 Saved outputs:
@@ -112,7 +133,12 @@ Saved outputs:
 runs/<topic>/video/draft_r0.mp4
 runs/<topic>/video/final.mp4
 runs/<topic>/evaluator_feedback_r<n>/evaluation_result.json
-runs/<topic>/review_r<n>.json
+runs/<topic>/evaluator_feedback_r<n>/repair_plan.json
+runs/<topic>/asset_review_r<n>.json                 # asset branch only
+runs/<topic>/outer_repair_decision_r<n>.json
+runs/<topic>/outer_plan_feedback_r<n>.json          # plan branch only
+runs/<topic>/outer_lesson_plan_refined_r<n>.json    # plan branch only
+runs/<topic>/outer_plan_eval_after_r<n>.json        # plan branch only
 runs/<topic>/evaluator_baseline/evaluation_result.json   # only with --eval-baseline
 ```
 

@@ -14,7 +14,18 @@ from ..schema import Critique, LessonPlan, Modality, ReviewResult, Segment
 
 def apply(provider: Provider, plan: LessonPlan, review: ReviewResult) -> set[str]:
     """Apply actionable critiques in place. Returns segment ids needing re-render."""
-    dirty: set[str] = set()
+    dirty_full, dirty_visual = apply_with_cache_hints(provider, plan, review)
+    return dirty_full | dirty_visual
+
+
+def apply_with_cache_hints(
+    provider: Provider,
+    plan: LessonPlan,
+    review: ReviewResult,
+) -> tuple[set[str], set[str]]:
+    """Apply critiques in place. Returns (audio+visual dirty, visual-only dirty)."""
+    dirty_full: set[str] = set()
+    dirty_visual: set[str] = set()
     by_id = {s.id: s for s in plan.segments}
 
     for c in review.critiques:
@@ -26,27 +37,28 @@ def apply(provider: Provider, plan: LessonPlan, review: ReviewResult) -> set[str
 
         if c.fix_action == "rewrite_narration":
             seg.narration = _rewrite_narration(provider, seg, c)
-            dirty.add(seg.id)  # audio (and any timing-driven visual) must regen
-        elif c.fix_action == "replan":
+            dirty_full.add(seg.id)  # audio and timing-driven visual must regen
+        elif c.fix_action == "change_modality":
             seg.modality = _pick_alternative(seg.modality)
             seg.visual_brief = _rewrite_brief(provider, seg, c)
-            dirty.add(seg.id)
+            dirty_visual.add(seg.id)
         elif c.fix_action == "re_render":
             seg.visual_brief = _rewrite_brief(provider, seg, c)
-            dirty.add(seg.id)
+            dirty_visual.add(seg.id)
         elif c.fix_action == "adjust_timing":
             # Timing-only: nudge the target and let the compositor refit. Cheap path —
             # mark dirty only for animation, whose length is intrinsic.
             if seg.modality == Modality.ANIMATION:
-                dirty.add(seg.id)
+                dirty_visual.add(seg.id)
 
-    return dirty
+    dirty_visual -= dirty_full
+    return dirty_full, dirty_visual
 
 
 def _pick_alternative(current: Modality) -> Modality:
     """Conservative fallback ladder when the reviewer says the approach is wrong."""
     ladder = {
-        Modality.ANIMATION: Modality.SLIDE,
+        Modality.ANIMATION: Modality.CONCEPT_IMAGE,
         Modality.CONCEPT_IMAGE: Modality.SLIDE,
         Modality.SLIDE: Modality.CONCEPT_IMAGE,
     }

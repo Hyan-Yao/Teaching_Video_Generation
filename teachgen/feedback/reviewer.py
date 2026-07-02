@@ -24,7 +24,7 @@ and which renderer produced it). Judge:
 - Factual/teaching quality.
 
 Return critiques. For each, set fix_action to exactly one of:
-- "replan": the wrong modality was chosen for a segment (visual approach is wrong).
+- "change_modality": the wrong modality was chosen for a segment (visual approach is wrong).
 - "rewrite_narration": the script is unclear, wrong, or mismatched to the visual.
 - "re_render": the visual is broken/ugly/illegible but the approach is right.
 - "adjust_timing": only pacing/duration is off.
@@ -54,5 +54,4 @@ def review(
         system="You convert free-form review notes into the ReviewResult schema verbatim.",
         max_tokens=2000,
     )
-
 

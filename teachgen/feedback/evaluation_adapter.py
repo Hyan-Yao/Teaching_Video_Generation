@@ -23,7 +23,7 @@ class _RepairCandidate(BaseModel):
     timestamp_seconds: float = Field(ge=0)
     severity: Literal["blocker", "major", "minor"]
     issue: str
-    fix_action: Literal["replan", "rewrite_narration", "re_render", "adjust_timing"]
+    fix_action: Literal["change_modality", "rewrite_narration", "re_render", "adjust_timing"]
     detail: str = ""
     source_metric: str
 
@@ -47,7 +47,7 @@ Only create repair candidates for problems that are:
 Available router actions:
 - re_render: visual is broken, unreadable, ugly, malformed, or technically defective.
 - rewrite_narration: narration/content is inaccurate, unclear, mismatched, or pedagogically weak.
-- replan: the segment's visual modality or visual approach is wrong.
+- change_modality: the segment's visual modality or visual approach is wrong.
 - adjust_timing: pacing, duration, or audio-visual synchronization is wrong.
 
 For scores 1-2, usually create repair candidates unless the evidence is not

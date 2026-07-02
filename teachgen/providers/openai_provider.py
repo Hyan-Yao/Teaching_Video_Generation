@@ -24,7 +24,7 @@ class OpenAIProvider:
             raise SystemExit("Missing dependency. Run: pip install openai") from e
         self.cfg = cfg
         self.m = cfg.models
-        self.client = OpenAI(api_key=cfg.api_key)
+        self.client = OpenAI(api_key=cfg.api_key, base_url="https://api.openai.com/v1")
 
     # ------------------------------------------------------------------ text
     def chat(self, prompt: str, *, system: str = "", max_tokens: int = 4000) -> str:
@@ -38,7 +38,14 @@ class OpenAIProvider:
         return resp.choices[0].message.content.strip()
 
     def chat_json(
-        self, prompt: str, schema: Type[T], *, system: str = "", max_tokens: int = 4000
+        self,
+        prompt: str,
+        schema: Type[T],
+        *,
+        system: str = "",
+        max_tokens: int = 4000,
+        temperature: float | None = None,
+        seed: int | None = None,
     ) -> T:
         """JSON mode + pydantic validation, with one self-correcting retry."""
         schema_json = json.dumps(schema.model_json_schema(), ensure_ascii=False)
@@ -53,12 +60,17 @@ class OpenAIProvider:
         ]
         last_err = None
         for attempt in range(2):
-            resp = self.client.chat.completions.create(
-                model=self.m.text,
-                messages=messages,
-                max_tokens=max_tokens,
-                response_format={"type": "json_object"},
-            )
+            kwargs = {
+                "model": self.m.text,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "response_format": {"type": "json_object"},
+            }
+            if temperature is not None:
+                kwargs["temperature"] = temperature
+            if seed is not None:
+                kwargs["seed"] = seed
+            resp = self.client.chat.completions.create(**kwargs)
             raw = resp.choices[0].message.content
             try:
                 return schema.model_validate_json(raw)
@@ -106,13 +118,16 @@ class OpenAIProvider:
         with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
             tmp.write(audio_bytes)
             tmp.flush()
-            with open(tmp.name, "rb") as fh:
-                tr = self.client.audio.transcriptions.create(
-                    model=self.m.transcribe,
-                    file=fh,
-                    response_format="verbose_json",
-                    timestamp_granularities=["word"],
-                )
+            try:
+                with open(tmp.name, "rb") as fh:
+                    tr = self.client.audio.transcriptions.create(
+                        model=self.m.transcribe,
+                        file=fh,
+                        response_format="verbose_json",
+                        timestamp_granularities=["word"],
+                    )
+            except Exception:
+                return audio_bytes, words
             for w in getattr(tr, "words", None) or []:
                 words.append(
                     WordTiming(

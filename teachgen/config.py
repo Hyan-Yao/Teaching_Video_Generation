@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from .schema import TeachingRequest
 
 
 @dataclass
@@ -24,20 +25,23 @@ class ModelConfig:
 
 @dataclass
 class Config:
-    """Top-level run configuration. Construct via `Config.from_env(topic=...)`."""
+    """Top-level run configuration. Construct via `Config.from_env(request=...)`."""
 
     topic: str
+    request: TeachingRequest
     audience: str = "general learners"
     provider: str = "openai"        # "openai" (default) | "gemini"
     api_key: str = ""
-
     models: ModelConfig = field(default_factory=ModelConfig)
 
     # Feedback loop
+    plan_refinement_mode: str = "none"  # "none" | "evaluator"
+    max_plan_rounds: int = 1            # inner plan-refinement cap
     use_feedback: bool = True
     feedback_mode: str = "original"  # "original" | "evaluator" | "none"
     max_outer_rounds: int = 3       # outer loop cap
     score_threshold: float = 8.0   # stop early when overall_score >= this
+    outer_plan_repair_threshold: int = 3
 
     # Optional post-run evaluator output
     run_evaluator_baseline: bool = False
@@ -54,7 +58,9 @@ class Config:
     repo_root: Path = Path(__file__).resolve().parent.parent
 
     @classmethod
-    def from_env(cls, topic: str, **overrides) -> "Config":
+    def from_env(cls, request: TeachingRequest, **overrides) -> "Config":
+        topic = request.course.topic
+        audience = request.student_persona
         provider = overrides.get("provider", "openai")
         env_name = "OPENAI_API_KEY"
         api_key = os.environ.get(env_name, "")
@@ -63,7 +69,13 @@ class Config:
                 f"{env_name} is not set. Export it first:\n"
                 f"    export {env_name}=sk-..."
             )
-        cfg = cls(topic=topic, api_key=api_key, **overrides)  # type: ignore[arg-type]
+        cfg = cls(
+            topic=topic,
+            audience=audience,
+            request=request,
+            api_key=api_key,
+            **overrides,
+        )
         cfg.run_dir = Path(cfg.run_dir) / _safe_slug(topic)
         return cfg
 
@@ -71,6 +83,10 @@ class Config:
     @property
     def plan_path(self) -> Path:
         return self.run_dir / "lesson_plan.json"
+
+    @property
+    def request_path(self) -> Path:
+        return self.run_dir / "request.json"
 
     @property
     def assets_dir(self) -> Path:

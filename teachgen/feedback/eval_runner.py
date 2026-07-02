@@ -11,7 +11,7 @@ def build_eval_request(plan: LessonPlan, video_path: Path | str) -> EvaluationRe
         course_requirement=_format_course_requirement(plan),
         learning_objectives=plan.objectives,
         student_persona=plan.audience,
-        intended_bloom=None,
+        intended_bloom=", ".join(plan.bloom_levels) if plan.bloom_levels else None,
     )
 
 
@@ -19,6 +19,18 @@ def _format_course_requirement(plan: LessonPlan) -> str:
     lines = [
         f"Topic: {plan.topic}",
         f"Audience: {plan.audience}",
+        "",
+        f"Learning goal: {plan.learning_goal or 'not specified'}",
+        "",
+        "Key learning points:",
+        *(
+            [f"- {point}" for point in plan.key_learning_points]
+            if plan.key_learning_points
+            else ["- not specified"]
+        ),
+        "",
+        f"Bloom levels: {', '.join(plan.bloom_levels) if plan.bloom_levels else 'not specified'}",
+        f"ICAP level: {plan.icap_level or 'not specified'}",
         "",
         "Learning objectives:",
     ]

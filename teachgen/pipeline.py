@@ -10,8 +10,11 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 
 from .config import Config
-from .feedback import eval_runner, evaluator_reviewer
-from .feedback import outer_reviewer, plan_refiner, visual_refiner
+from teachgen.eval.models import EvaluationResult
+
+from .feedback import eval_runner, evaluator_reviewer, evaluation_adapter
+from .feedback import lesson_plan_refiner, plan_evaluator
+from .feedback import outer_plan_refiner, outer_reviewer, plan_refiner, router, visual_refiner
 from .planner import content_writer, route
 from .providers import get_provider
 from .providers.base import Provider
@@ -24,6 +27,10 @@ from .compositor import compositor
 
 def generate(cfg: Config) -> dict:
     cfg.ensure_dirs()
+    cfg.request_path.write_text(
+        cfg.request.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
     provider = get_provider(cfg)
 
     plan = phase1_plan(cfg, provider)
@@ -44,15 +51,48 @@ def generate(cfg: Config) -> dict:
 # ============================================================ PHASE 1 (text)
 def phase1_plan(cfg: Config, provider: Provider) -> LessonPlan:
     _log("Phase 1: writing teaching content...")
-    content = content_writer.write_content(provider, cfg.topic, cfg.audience)
+    content = content_writer.write_content(provider, cfg.request)
 
     _log("Phase 1: routing segments to renderers...")
-    plan = route.plan_lesson(provider, content)
+    plan = route.plan_lesson(provider, content, cfg.request)
+
+    if cfg.plan_refinement_mode == "evaluator":
+        plan = _refine_lesson_plan(cfg, provider, plan)
 
     cfg.plan_path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
     _log(f"Phase 1: lesson plan -> {cfg.plan_path}")
     for s in plan.segments:
         _log(f"   {s.id}  [{s.modality.value:<13}] {s.title}")
+    return plan
+
+
+def _refine_lesson_plan(cfg: Config, provider: Provider, plan: LessonPlan) -> LessonPlan:
+    initial_path = cfg.run_dir / "lesson_plan_initial.json"
+    initial_path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
+    _log(f"Phase 1: initial lesson plan -> {initial_path}")
+
+    for rnd in range(cfg.max_plan_rounds + 1):
+        _log(f"Phase 1: evaluating lesson plan (round {rnd})...")
+        evaluation = plan_evaluator.evaluate_plan(provider, cfg.request, plan)
+        eval_path = cfg.run_dir / f"plan_eval_r{rnd}.json"
+        eval_path.write_text(evaluation.model_dump_json(indent=2), encoding="utf-8")
+        _log(
+            f"   plan_score={evaluation.overall_score:.2f}  "
+            f"requires_revision={evaluation.requires_revision}"
+        )
+
+        if not evaluation.requires_revision:
+            break
+        if rnd >= cfg.max_plan_rounds:
+            _log("   max plan-refinement rounds reached; using latest plan.")
+            break
+
+        _log(f"Phase 1: refining lesson plan (round {rnd + 1})...")
+        plan = lesson_plan_refiner.refine_plan(provider, cfg.request, plan, evaluation)
+        refined_path = cfg.run_dir / f"lesson_plan_refined_r{rnd + 1}.json"
+        refined_path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
+        _log(f"   refined lesson plan -> {refined_path}")
+
     return plan
 
 
@@ -91,6 +131,105 @@ def phase2_produce(cfg: Config, provider: Provider, plan: LessonPlan) -> dict:
 
         if not cfg.use_feedback or cfg.feedback_mode == "none" or is_last:
             break
+
+        if cfg.feedback_mode == "evaluator":
+            evaluation_dir = cfg.run_dir / f"evaluator_feedback_r{outer_rnd}"
+            _log(f"Outer video evaluation (round {outer_rnd}) -> {evaluation_dir}")
+            evaluation_path = eval_runner.run_lesson_evaluation(
+                plan,
+                draft_path,
+                evaluation_dir,
+                chunk_seconds=cfg.evaluator_chunk_seconds,
+            )
+            evaluation = EvaluationResult.model_validate_json(
+                evaluation_path.read_text(encoding="utf-8")
+            )
+
+            revised_plan, decision, plan_evaluation = (
+                outer_plan_refiner.refine_from_video_evaluation(
+                    provider,
+                    cfg.request,
+                    plan,
+                    evaluation,
+                    threshold=cfg.outer_plan_repair_threshold,
+                )
+            )
+            (cfg.run_dir / f"outer_repair_decision_r{outer_rnd}.json").write_text(
+                decision.model_dump_json(indent=2),
+                encoding="utf-8",
+            )
+
+            if decision.repair_type == "asset":
+                _log(
+                    "Outer asset repair triggered: "
+                    f"{', '.join(decision.priority_metrics)}"
+                )
+                review = evaluation_adapter.adapt_evaluation_to_review(
+                    provider,
+                    evaluation,
+                    plan,
+                    debug_dir=evaluation_dir,
+                )
+                (cfg.run_dir / f"asset_review_r{outer_rnd}.json").write_text(
+                    review.model_dump_json(indent=2),
+                    encoding="utf-8",
+                )
+                dirty_full, dirty_visual = router.apply_with_cache_hints(
+                    provider,
+                    plan,
+                    review,
+                )
+                if not dirty_full and not dirty_visual:
+                    _log("No actionable asset repairs; finalizing.")
+                    draft_path = _finalize(cfg, draft_path)
+                    break
+
+                for sid in dirty_full:
+                    audio_cache.pop(sid, None)
+                    visual_cache.pop(sid, None)
+                for sid in dirty_visual:
+                    visual_cache.pop(sid, None)
+                cfg.plan_path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
+                continue
+
+            if decision.repair_type != "plan":
+                _log(f"Outer repair decision: {decision.repair_type}; finalizing.")
+                draft_path = _finalize(cfg, draft_path)
+                break
+
+            _log(
+                "Outer plan repair triggered: "
+                f"{', '.join(decision.priority_metrics)}"
+            )
+            if plan_evaluation is not None:
+                (
+                    cfg.run_dir / f"outer_plan_feedback_r{outer_rnd}.json"
+                ).write_text(
+                    plan_evaluation.model_dump_json(indent=2),
+                    encoding="utf-8",
+                )
+
+            plan = revised_plan
+            refined_path = cfg.run_dir / f"outer_lesson_plan_refined_r{outer_rnd + 1}.json"
+            refined_path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
+            cfg.plan_path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
+
+            _log(f"Outer refined lesson plan -> {refined_path}")
+            _log(f"Evaluating outer refined plan (round {outer_rnd + 1})...")
+            after_eval = plan_evaluator.evaluate_plan(provider, cfg.request, plan)
+            after_eval_path = cfg.run_dir / f"outer_plan_eval_after_r{outer_rnd + 1}.json"
+            after_eval_path.write_text(
+                after_eval.model_dump_json(indent=2),
+                encoding="utf-8",
+            )
+            _log(
+                f"   outer_plan_score={after_eval.overall_score:.2f}  "
+                f"requires_revision={after_eval.requires_revision}"
+            )
+
+            audio_cache.clear()
+            visual_cache.clear()
+            continue
 
         # --- outer review ---
         rev = _review_composite(cfg, provider, plan, draft_path, outer_rnd)

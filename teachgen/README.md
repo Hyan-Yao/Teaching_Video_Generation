@@ -1,6 +1,6 @@
 # teachgen
 
-**One OpenAI key + one topic → a narrated teaching video.** An orchestration layer
+**One OpenAI key + one structured request → a narrated teaching video.** An orchestration layer
 that unifies this repo's three production paths behind a single planner and a
 single-key provider, then narrates, composites, and self-reviews the result.
 
@@ -8,19 +8,30 @@ single-key provider, then narrates, composites, and self-reviews the result.
 export OPENAI_API_KEY=sk-...
 
 # full run
-python -m teachgen --topic "How the Fourier transform works"
+python -m teachgen --request-json examples/regression_request.json
+
+# same entry point when using uv
+uv run python -m teachgen --request-json examples/regression_request.json
 
 # inspect the plan before spending money on media
-python -m teachgen --topic "Vectors" --plan-only
+python -m teachgen --request-json examples/regression_request.json --plan-only
 
 # common options
-python -m teachgen --topic "Vectors" --audience "high-school students" \
+python -m teachgen --request-json examples/regression_request.json \
     --max-rounds 3 --score-threshold 8.0 --no-parallel --run-dir runs
+
+# enable the inner plan refiner before any rendering
+python -m teachgen --request-json examples/regression_request.json \
+    --plan-refinement-mode evaluator
+
+# enable the evaluator-driven outer refiner
+python -m teachgen --request-json examples/regression_request.json \
+    --feedback-mode evaluator --eval-baseline
 ```
 
 ## Two phases
 
-- **Phase 1 — planner (text only).** topic → teaching content (objectives +
+- **Phase 1 — planner (text only).** structured request → teaching content (objectives +
   per-segment spoken narration) → a `LessonPlan` that routes each segment to a
   renderer. Written to `runs/<topic>/lesson_plan.json` — review/edit before Phase 2.
 - **Phase 2 — produce (media).** per segment: narrate (TTS + word timings) and render
@@ -30,24 +41,29 @@ python -m teachgen --topic "Vectors" --audience "high-school students" \
 cli → pipeline ──┬─ planner:  content_writer → route ──────────────────► LessonPlan
                  └─ produce:  narrator + renderers → compositor ───────► draft.mp4
                                                           │
-                                                    outer_reviewer
-                                                    (score / classify)
-                                                    │           │
-                                              content_issues  visual_issues
-                                                    │               │
-                                             plan_refiner    visual_refiner
-                                            (Inner Loop 1)  (Inner Loop 2)
-                                                    │               │
-                                             re-TTS + re-render   re-render only
-                                                    └───────────────┘
-                                                      next outer round
+                                             feedback-mode=original
+                                               outer_reviewer → plan_refiner / visual_refiner
+                                                          │
+                                             feedback-mode=evaluator
+                                               evaluator → outer_repair_decider
+                                                          ├─ plan → lesson_plan_refiner
+                                                          └─ asset → evaluation_adapter → router
 ```
 
 Everything generative (text, structured, vision, TTS, image) goes through one
 `Provider` (`providers/openai_provider.py`) — that is why a single key suffices.
 Vision review samples frames from the mp4 (OpenAI can't ingest video directly).
 
-## Nested feedback loop
+## Refinement loops
+
+There are now two evaluator-driven refinement stages in the system.
+
+- **Inner plan refiner** (`--plan-refinement-mode evaluator`): runs before any media
+  generation. It grades the `LessonPlan` against the structured request and can rewrite
+  the plan before rendering starts.
+- **Outer video refiner** (`--feedback-mode evaluator`): runs after each draft video is
+  composed. It uses the full-video evaluator to decide whether the next repair should
+  be a full lesson-plan revision or a targeted asset/segment repair.
 
 Phase 2 runs an **outer loop** (default ≤ 3 rounds) that drives two **inner loops**
 based on what the reviewer finds wrong. Rounds stop early once `overall_score ≥
@@ -86,7 +102,7 @@ are never re-produced.
 Use the evaluator as the outer reviewer for the nested feedback/refinement loop:
 
 ```bash
-python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator
+python -m teachgen --request-json examples/regression_request.json --feedback-mode evaluator
 ```
 
 This saves evaluator outputs under per-round directories:
@@ -94,13 +110,17 @@ This saves evaluator outputs under per-round directories:
 ```text
 runs/<topic>/evaluator_feedback_r0/evaluation_result.json
 runs/<topic>/evaluator_feedback_r0/repair_plan.json
-runs/<topic>/review_r0.json
+runs/<topic>/asset_review_r0.json
+runs/<topic>/outer_repair_decision_r0.json
+runs/<topic>/outer_plan_feedback_r0.json
+runs/<topic>/outer_lesson_plan_refined_r1.json
+runs/<topic>/outer_plan_eval_after_r1.json
 ```
 
 To also run the evaluator on the final produced video after refinement:
 
 ```bash
-python -m teachgen --topic "How the Fourier transform works" --feedback-mode evaluator --eval-baseline
+python -m teachgen --request-json examples/regression_request.json --feedback-mode evaluator --eval-baseline
 ```
 
 Final evaluator report outputs:
@@ -111,6 +131,21 @@ runs/<topic>/evaluator_baseline/content_grades.json
 runs/<topic>/evaluator_baseline/presentation_grades.json
 runs/<topic>/evaluator_baseline/pedagogy_grades.json
 runs/<topic>/evaluator_baseline/lecture.json
+```
+
+For plan-only evaluation before rendering:
+
+```bash
+python -m teachgen --request-json examples/regression_request.json \
+    --plan-refinement-mode evaluator --plan-only
+```
+
+Plan-refinement outputs:
+
+```text
+runs/<topic>/lesson_plan_initial.json
+runs/<topic>/plan_eval_r0.json
+runs/<topic>/lesson_plan_refined_r1.json
 ```
 
 ## The three renderers (plugins in `renderers/`)

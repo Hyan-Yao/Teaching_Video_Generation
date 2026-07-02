@@ -20,6 +20,53 @@ class Modality(str, Enum):
     SLIDE = "slide"                    # make_slide / pptx — definitions, summaries, lists
     CONCEPT_IMAGE = "concept_image"    # text-to-image — intuition, metaphor, one big idea
 
+class PlanMetricScore(BaseModel):
+    metric: str
+    score: int
+    rationale: str
+    evidence: list[str] = Field(default_factory=list)
+
+
+class PlanEvaluationResult(BaseModel):
+    overall_score: float
+    scores: list[PlanMetricScore]
+    summary: str
+    requires_revision: bool
+    
+class CourseSpec(BaseModel):
+    topic: str
+    learning_goal: str
+    key_learning_points: list[str] = Field(default_factory=list)
+
+
+class PedagogySpec(BaseModel):
+    bloom_levels: list[str] = Field(default_factory=list)
+    icap_level: str = ""
+
+
+class TeachingRequest(BaseModel):
+    request_id: str = ""
+    course: CourseSpec
+    student_persona: str
+    pedagogy: PedagogySpec = Field(default_factory=PedagogySpec)
+
+    @classmethod
+    def from_topic_audience(cls, topic: str, audience: str) -> "TeachingRequest":
+        return cls(
+            course=CourseSpec(
+                topic=topic,
+                learning_goal=f"Teach the topic clearly: {topic}",
+                key_learning_points=[],
+            ),
+            student_persona=audience,
+        )
+    
+class OuterRepairDecision(BaseModel):
+    repair_type: Literal["none", "asset", "plan"]
+    reason: str
+    priority_metrics: list[str] = Field(default_factory=list)
+    affected_segments: list[str] = Field(default_factory=list)
+    evidence: list[str] = Field(default_factory=list) 
 
 class Segment(BaseModel):
     id: str = Field(..., description="Stable id, e.g. 'seg1'")
@@ -35,11 +82,13 @@ class Segment(BaseModel):
 
 
 class LessonPlan(BaseModel):
-    """Phase-1 output. Fully human-inspectable JSON — the natural review checkpoint."""
-
     topic: str
     audience: str
     objectives: list[str]
+    learning_goal: str = ""
+    key_learning_points: list[str] = Field(default_factory=list)
+    bloom_levels: list[str] = Field(default_factory=list)
+    icap_level: str = ""
     segments: list[Segment]
 
 
@@ -73,7 +122,7 @@ class Critique(BaseModel):
     segment_id: Optional[str] = Field(None, description="None = whole-video issue")
     severity: Literal["blocker", "major", "minor"]
     issue: str
-    fix_action: Literal["replan", "rewrite_narration", "re_render", "adjust_timing"]
+    fix_action: Literal["change_modality", "rewrite_narration", "re_render", "adjust_timing"]
     detail: str = ""
 
 

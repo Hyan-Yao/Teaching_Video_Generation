@@ -10,7 +10,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from ..providers.base import Provider
-from ..schema import LessonPlan, Modality, Segment
+from ..schema import LessonPlan, Modality, Segment, TeachingRequest
 from .content_writer import TeachingContent
 
 SYSTEM = """\
@@ -54,14 +54,22 @@ class _RoutingPlan(BaseModel):
     segments: list[_Routed]
 
 
-def plan_lesson(provider: Provider, content: TeachingContent) -> LessonPlan:
+def plan_lesson(provider: Provider, content: TeachingContent, request: TeachingRequest) -> LessonPlan:
     seg_blob = "\n\n".join(
         f"[{i+1}] {s.title}\n{s.narration}" for i, s in enumerate(content.segments)
     )
     prompt = (
         f"Topic: {content.topic}\nAudience: {content.audience}\n\n"
+        f"Learning goal:\n{request.course.learning_goal}\n\n"
+        "Key learning points:\n"
+        + "\n".join(f"- {point}" for point in request.course.key_learning_points)
+        + "\n\n"
+        f"Bloom levels: {', '.join(request.pedagogy.bloom_levels) or 'not specified'}\n"
+        f"ICAP level: {request.pedagogy.icap_level or 'not specified'}\n\n"
         f"Segments (in order):\n{seg_blob}\n\n"
-        "Route every segment. Keep the same order and count."
+        "Route every segment. Keep the same order and count. Make every visual brief "
+        "support the learning goal, key learning points, student persona, Bloom levels, "
+        "and ICAP target."
     )
     routing = provider.chat_json(prompt, _RoutingPlan, system=SYSTEM, max_tokens=4000)
 
@@ -87,6 +95,10 @@ def plan_lesson(provider: Provider, content: TeachingContent) -> LessonPlan:
         topic=content.topic,
         audience=content.audience,
         objectives=content.objectives,
+        learning_goal=request.course.learning_goal,
+        key_learning_points=request.course.key_learning_points,
+        bloom_levels=request.pedagogy.bloom_levels,
+        icap_level=request.pedagogy.icap_level,
         segments=segments,
     )
 

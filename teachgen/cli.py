@@ -1,7 +1,7 @@
-"""One-key, one-topic entry point.
+"""One-key, structured-request entry point.
 
     export OPENAI_API_KEY=sk-...
-    python -m teachgen --topic "How the Fourier transform works"
+    python -m teachgen --request-json examples/regression_request.json
 
 Options let you stop after Phase 1 (to review the plan), tune the feedback loop, or
 swap the backend provider.
@@ -19,17 +19,24 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 from .config import Config
 from .pipeline import generate, phase1_plan
 from .providers import get_provider
+from .schema import TeachingRequest
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(prog="teachgen", description=__doc__)
-    ap.add_argument("--topic", required=True, help="the lesson topic")
-    ap.add_argument("--audience", default="general learners")
+    ap.add_argument("--request-json", required=True, help="path to the structured teaching request JSON")
     ap.add_argument("--provider", default="openai", choices=["openai", "gemini"])
     ap.add_argument("--text-model", help="override the text/planning/routing model")
     ap.add_argument("--vision-model", help="override the vision/reviewer model")
     ap.add_argument("--tts-model", help="override the TTS model")
     ap.add_argument("--image-model", help="override the image model")
+    ap.add_argument(
+        "--plan-refinement-mode",
+        choices=["none", "evaluator"],
+        default="none",
+        help="which inner plan refiner to use before video generation",
+    )
+    ap.add_argument("--max-plan-rounds", type=int, default=1, help="max inner plan-refinement rounds")
     ap.add_argument("--no-feedback", action="store_true", help="skip the MLLM review loop")
     ap.add_argument(
         "--feedback-mode",
@@ -40,6 +47,12 @@ def main() -> None:
     ap.add_argument("--max-rounds", type=int, default=3, help="max outer feedback rounds")
     ap.add_argument("--score-threshold", type=float, default=8.0,
                     help="stop early when overall score >= this (0-10)")
+    ap.add_argument(
+        "--outer-plan-repair-threshold",
+        type=int,
+        default=3,
+        help="trigger outer plan repair when a plan-level video metric is <= this",
+    )
     ap.add_argument(
         "--eval-baseline",
         action="store_true",
@@ -61,15 +74,19 @@ def main() -> None:
     )
     args = ap.parse_args()
     feedback_mode = "none" if args.no_feedback else args.feedback_mode
+    request_path = Path(args.request_json)
+    request = TeachingRequest.model_validate_json(request_path.read_text(encoding="utf-8"))
 
     cfg = Config.from_env(
-        topic=args.topic,
-        audience=args.audience,
+        request=request,
         provider=args.provider,
+        plan_refinement_mode=args.plan_refinement_mode,
+        max_plan_rounds=args.max_plan_rounds,
         use_feedback=feedback_mode != "none",
         feedback_mode=feedback_mode,
         max_outer_rounds=args.max_rounds,
         score_threshold=args.score_threshold,
+        outer_plan_repair_threshold=args.outer_plan_repair_threshold,
         run_evaluator_baseline=args.eval_baseline,
         evaluator_chunk_seconds=args.eval_chunk_seconds,
         parallel=not args.no_parallel,
