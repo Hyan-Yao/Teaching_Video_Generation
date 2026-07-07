@@ -44,6 +44,11 @@ Only create repair candidates for problems that are:
 2. important enough to change the video,
 3. likely repairable by one existing router action.
 
+Preserve the lesson plan. Do not ask the router to remove, simplify away, or
+replace required concepts, examples, labels, equations, or comparisons from the
+current plan. A repair candidate should identify what went wrong in production
+and what must be fixed while keeping the segment's instructional purpose intact.
+
 Available router actions:
 - re_render: visual is broken, unreadable, ugly, malformed, or technically defective.
 - rewrite_narration: narration/content is inaccurate, unclear, mismatched, or pedagogically weak.
@@ -67,7 +72,7 @@ def adapt_evaluation_to_review(
     debug_dir: Path | None = None,
 ) -> ReviewResult:
     """Ask an LLM to choose repairable findings, then map timestamps to segments."""
-    repair_plan = _plan_repairs(provider, result, debug_dir=debug_dir)
+    repair_plan = _plan_repairs(provider, result, plan, debug_dir=debug_dir)
     timeline = build_segment_timeline(plan, _video_duration(result))
 
     critiques: list[Critique] = []
@@ -140,13 +145,18 @@ def segment_for_timestamp(
 def _plan_repairs(
     provider: Provider,
     result: EvaluationResult,
+    plan: LessonPlan,
     *,
     debug_dir: Path | None = None,
 ) -> _RepairPlan:
     prompt = (
+        "Lesson plan context that must be preserved:\n\n"
+        f"{_format_plan_context(plan)}\n\n"
         "Evaluator scores and evidence:\n\n"
         f"{_format_scores(result.scores)}\n\n"
-        "Return only repair candidates the current router can act on."
+        "Return only repair candidates the current router can act on. "
+        "Each candidate detail should explain both the defect to fix and the "
+        "specific lesson content that must be preserved."
     )
     repair_plan = provider.chat_json(prompt, _RepairPlan, system=SYSTEM, max_tokens=2500)
     if debug_dir is not None:
@@ -157,6 +167,35 @@ def _plan_repairs(
             repair_plan.model_dump_json(indent=2), encoding="utf-8"
         )
     return repair_plan
+
+
+def _format_plan_context(plan: LessonPlan) -> str:
+    lines = [
+        f"Topic: {plan.topic}",
+        f"Audience/persona: {plan.audience}",
+        f"Learning goal: {plan.learning_goal or 'not provided'}",
+        "Learning objectives:",
+        *[f"- {objective}" for objective in plan.objectives],
+        "Key learning points:",
+        *[f"- {point}" for point in plan.key_learning_points],
+        f"Bloom levels: {', '.join(plan.bloom_levels) or 'not provided'}",
+        f"ICAP level: {plan.icap_level or 'not provided'}",
+        "",
+        "Segment timeline and required content:",
+    ]
+    for segment in plan.segments:
+        lines.extend(
+            [
+                (
+                    f"- {segment.id}: {segment.title} "
+                    f"({segment.modality.value}, target {segment.target_seconds}s)"
+                ),
+                f"  Narration: {segment.narration}",
+                f"  Visual brief: {segment.visual_brief}",
+                f"  Rationale: {segment.rationale}",
+            ]
+        )
+    return "\n".join(lines)
 
 
 def _format_scores(scores: list[RubricScore]) -> str:

@@ -1,28 +1,118 @@
-| **Categories** | **Metric** | Question it answers | **Rating Scale (1) Poor** | 2 Weak | 3 Adequate | 4 Strong | 5 Excellent | **Reference** |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| content accuracy | Learning Objective Coverage | Did the lesson adequately cover all stated or inferred learning objectives and key concepts within its apparent scope? | Most learning objectives are not addressed. Large portions of the required content are absent. Lesson is drastically off topic | Several major learning objectives or key concepts are missing or only briefly mentioned. | The lesson addresses the primary objectives but omits important concepts, supporting knowledge, or portions of the required content. | Most learning objectives and key concepts are addressed. Minor supporting concepts or details may be omitted | All stated learning objectives, key concepts, and essential knowledge are addressed with sufficient coverage | Bloom, Teaching Monster |
-| content accuracy | Content Accuracy | Is the content correct? | The lesson contains pervasive factual inaccuracies or fundamental misunderstandings of the subject matter that would likely leave learners with an incorrect understanding of the topic | The lesson contains major factual errors or multiple important misconceptions that substantially undermine learner understanding | The lesson is mostly accurate but contains several inaccuracies, omissions, or misleading simplifications that may cause some learner confusion. | The lesson is overwhelmingly accurate. Minor inaccuracies, imprecise wording, or oversimplifications may appear but do not meaningfully affect learner understanding. | The lesson is factually accurate throughout. No significant errors, misleading statements, or incorrect explanations are present. Minor simplifications appropriate for the target audience may be used without compromising correctness. | Teaching Monster, ICW-Bench |
-| content accuracy | Visual Quality | Are visuals readable, clear, and technically correct? | Visual materials are frequently unreadable, broken, missing, or technically incorrect. Critical instructional content is inaccessible due to severe readability problems, rendering failures, missing visuals, or pervasive visual defects. | Multiple visual elements are difficult to read or interpret. Important diagrams, equations, charts, or text may be partially obscured, poorly formatted, blurry, cluttered, or incorrectly rendered, reducing instructional effectiveness | Visuals contain small noticeable issues such as small text, cluttered slides, inconsistent formatting, low-resolution figures, or minor rendering errors that occasionally hinder understanding. | Visuals are generally clear and technically correct. Minor readability, formatting, or rendering issues may occur but do not meaningfully affect learner understanding. | All instructional visuals are clear, readable, properly rendered, and technically correct. Text is consistently legible, diagrams and equations are displayed correctly, and no visual defects interfere with learning. | ICW-Bench, Teaching Monster |
-| pedagogical effectiveness | Multimedia Learning Design | Do visuals support learning by aligning with narration and meaningfully representing the concepts being taught? | Instructional visual materials consistently distract from, conflict with, or fail to support spoken explanations. Important concepts lack necessary visual support, visual elements provide little instructional value, and learners would likely understand the lesson equally well or better without them. | Instructional visual materials frequently fail to support the concepts being explained. Visuals may be poorly aligned with narration, overly decorative, poorly timed, or insufficient for explaining important concepts. Multiple significant opportunities for visual explanation are missed. | Some instructional visual materials support learning effectively, while others are redundant, loosely connected to the narration, or provide limited educational value. Several concepts that would benefit from visual support may receive only minimal visual treatment. | Visual materials generally support learning and align well with narration. Most concepts are supported appropriately, though some opportunities for clearer visual explanation or emphasis may be missed. | The visual materials used in the lesson consistently support learning and are highly appropriate for the content being taught. Slide content, diagrams, equations, examples, animations, or other visual elements are well integrated with narration and meaningfully improve understanding. The lesson makes effective use of visual support where beneficial, while avoiding unnecessary or distracting visual elements. | ICW-Bench |
-| pedagogical effectiveness | Logic | Does the lesson build coherently, without unjustified jumps or overload? | The lesson lacks a coherent instructional flow. Concepts appear disconnected, transitions are confusing or absent, and learners would likely struggle to follow the progression of ideas. | The lesson frequently shifts between concepts without clear transitions, presents ideas in a confusing order, or makes it difficult for learners to understand how concepts connect. | The lesson is understandable overall but contains several abrupt transitions, weak conceptual connections, or organizational issues that occasionally require learners to infer how ideas relate. | The lesson is generally well-organized and easy to follow. Minor sequencing issues, rushed transitions, or weak connections between concepts may occur but do not substantially affect understanding. | The lesson follows a clear and coherent progression throughout. Concepts are introduced in a sensible sequence, explanations build naturally upon prior ideas, transitions are smooth, and relationships between concepts are consistently clear. | Teaching Monster |
-| pedagogical effectiveness | Learning Adaptation | Is the lesson appropriately tailored to the provided or inferred target learner's background knowledge, level, and learning needs? | The lesson is fundamentally misaligned with the target learner and would be difficult or impossible for that learner to follow. | The lesson frequently assumes inappropriate prior knowledge, uses unsuitable terminology, or progresses at an unsuitable pace for the target learner. | The lesson is partially adapted to the target learner. Some explanations, pacing decisions, or prerequisite assumptions may create confusion or unnecessary difficulty. | The lesson is generally well-adapted to the target learner. Minor mismatches in pacing, terminology, or prerequisite assumptions may occur but do not substantially hinder learning. | The lesson is exceptionally well-matched to the target learner. Difficulty, terminology, pacing, examples, and explanations consistently align with the learner's background knowledge and learning needs | Teaching Monster |
-| pedagogical effectiveness | Bloom Alignment | Does the lesson support the provided or inferred intended cognitive level? | The lesson is fundamentally misaligned with the intended Bloom level and never supports the intended cognitive outcome. | The lesson is primarily focused at cognitive levels that do not match the intended level. Alignment is limited. | The lesson demonstrates partial alignment with the intended Bloom level but spends substantial portions operating at different cognitive levels. | The lesson is generally centered around the intended Bloom level, though some portions spend more time than necessary above or below it. | The lesson is appropriately centered around the intended Bloom level. Lower-level skills are used when necessary to support learning, but the majority of the lesson consistently supports the intended cognitive outcome. | Bloom's Taxonomy |
-| pedagogical effectiveness | ICAP Alignment | Does the lesson's instructional design support the provided or inferred expected level of learner engagement? | The lesson is fundamentally misaligned with the expected ICAP level. The engagement supported by the lesson never matches the expected level. | The lesson is primarily centered around engagement levels that differ from the expected ICAP level. Alignment is limited. | The lesson demonstrates partial alignment with the expected ICAP level. While some instructional segments support the expected level, substantial portions operate at different engagement levels. | The lesson generally supports the expected ICAP level. Minor portions operate above or below the expected level, but overall alignment remains strong. | The lesson is appropriately centered around the expected ICAP level. The engagement supported by the lesson closely matches the expected level throughout most of the instructional experience. | ICAP |
+# Instructional Video Evaluation Rubric
 
-## Conditional Scoring Rules
+Use this rubric to grade generated instructional videos on eight 1-5 metrics.
+Score the delivered video, not the intended plan. Use provided metadata such as
+learning objectives, course requirements, student persona, Bloom level, and ICAP
+level as the primary scoring target when available.
 
-The evaluator may receive optional metadata including learning objectives,
-course requirements, student persona, topic, and intended Bloom level.
+## Global Scoring Rules
 
-- Use sufficiently detailed provided metadata as the primary scoring target.
-- Infer missing or insufficient context from the video.
-- Clearly mark every context-sensitive score as `provided`, `inferred`, or
-  `mixed`.
-- Do not penalize a lecture for failing to cover content outside its apparent
-  scope, level, and duration.
-- When required context is inferred with low confidence, lower the confidence
-  of the corresponding metric score and state the limitation.
-- Score the delivered instructional experience, not hidden author intent.
+- Score only observable video evidence: spoken narration, visible text, diagrams,
+  animations, layout, pacing, prompts, and learner tasks.
+- Do not give credit for what the video probably intended to show or teach.
+- A score of 5 means excellent performance with no meaningful weakness found for
+  that metric.
+- A score of 4 means strong performance with at least one minor weakness,
+  omission, artifact, unclear moment, or missed opportunity.
+- A score of 3 means acceptable but clearly needs improvement.
+- If uncertain between 4 and 5, choose 4.
+- If evidence is mixed, choose the lower score that reflects the weakness.
+- Do not assign 5 from general positive impressions alone. A 5 requires specific
+  positive evidence and no meaningful conflicting evidence.
+- Use provided objectives, learner profile, Bloom level, and ICAP level as the
+  target when they are provided. Infer missing context only when necessary.
+- Do not penalize a video for failing to cover content outside its stated or
+  inferred scope, audience, duration, and learning goal.
+
+## Metrics
+
+| Category | Metric | Question | 1 Poor | 2 Weak | 3 Adequate | 4 Strong | 5 Excellent |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Content | Learning Objective Coverage | Did the lesson cover all stated or inferred learning objectives and key concepts within scope? | Most objectives are not addressed, major required content is absent, or the lesson is drastically off topic. | Several major objectives or key concepts are missing or only briefly mentioned. | Primary objectives are addressed, but important concepts, supporting knowledge, or required content are omitted. | Most objectives and key concepts are addressed, with only minor supporting details omitted. | All objectives, key concepts, and essential knowledge are explicitly covered at the expected depth. |
+| Content | Content Accuracy | Is the lesson content correct? | Pervasive factual inaccuracies or fundamental misunderstandings. | Major factual errors or multiple important misconceptions. | Mostly accurate, but several inaccuracies, omissions, or misleading simplifications may cause confusion. | Overwhelmingly accurate, with only minor imprecision or harmless oversimplification. | Factually accurate throughout, with no meaningful ambiguity, misleading statement, or incorrect explanation. |
+| Presentation | Visual Quality | Are visuals readable, clear, and technically correct? | Visuals are frequently unreadable, broken, missing, or technically incorrect, making critical content inaccessible. | Multiple important visual elements are difficult to read, interpret, or trust because of clutter, formatting, low resolution, or errors. | Visuals are generally usable but contain noticeable readability, formatting, clutter, or rendering issues that sometimes hinder understanding. | Visuals are clear and technically correct, with only minor issues that do not meaningfully affect understanding. | All instructional visuals are consistently clear, readable, properly rendered, and technically correct. |
+| Presentation | Multimedia Learning Design | Do visuals align with narration and meaningfully support learning? | Visuals consistently distract from, conflict with, or fail to support narration; important concepts lack needed visual support. | Visuals frequently fail to support explained concepts, are poorly timed or decorative, or miss several major visual explanation opportunities. | Some visuals support learning, while others are redundant, loosely connected, generic, or provide limited instructional value. | Visuals generally align with narration and support most concepts, with only minor missed opportunities. | Visuals consistently align with narration, meaningfully improve understanding, and avoid unnecessary or distracting elements. |
+| Presentation | Logic | Does the lesson present concepts in a coherent instructional order, with enough connective explanation for the learner to follow? | The lesson lacks coherent flow; concepts are disconnected and transitions are confusing or absent. | The lesson frequently shifts between concepts without clear transitions or presents ideas in a confusing order. | The lesson is understandable overall but contains several abrupt transitions, weak connections, or organizational issues that noticeably hurt comprehension. | The lesson is generally well organized and easy to follow, with only minor sequencing or mechanically stitched transition weaknesses. | Concepts follow a clear progression, build naturally, and use smooth transitions throughout. |
+| Pedagogy | Learning Adaptation | Is the lesson tailored to the target learner's background, level, and learning needs? | The lesson is fundamentally misaligned with the target learner and would be difficult or impossible to follow. | The lesson frequently assumes inappropriate prior knowledge, uses unsuitable terminology, or progresses at an unsuitable pace. | The lesson is partially adapted, but some explanations, pacing, or prerequisite assumptions create unnecessary difficulty. | The lesson is generally well adapted, with only minor mismatches in pacing, terminology, examples, or prerequisite assumptions. | Difficulty, terminology, pacing, examples, and explanations are consistently well matched to the target learner. |
+| Pedagogy | Bloom Alignment | Does the video support the intended Bloom cognitive level? | The video never supports the intended cognitive outcome. | The video primarily operates at cognitive levels different from the intended level, with limited alignment. | The video partially supports the intended level, but substantial portions operate at different levels. | The video generally supports the intended level, with only minor portions above or below it. | The intended cognitive level is supported repeatedly and clearly across the relevant instructional experience. |
+| Pedagogy | ICAP Alignment | Does the video support the expected level of learner engagement? | The observed engagement never matches the expected ICAP level. | The video is primarily centered on engagement levels different from the expected level, with limited alignment. | Some segments support the expected level, but substantial portions operate at different engagement levels. | The video generally supports the expected engagement level, with only minor mismatches. | The expected engagement level is supported repeatedly and clearly throughout most of the instructional experience. |
+
+## Metric-Specific Caps
+
+Use these caps after choosing an initial score. A cap means the score cannot be
+higher than the listed value.
+
+### Learning Objective Coverage
+
+- Cap at 4 if any objective or key learning point is only briefly mentioned,
+  indirectly implied, or covered below expected depth.
+- Cap at 3 if any core objective or key learning point is missing.
+- Do not use visual quality, engagement, or activity design as coverage evidence
+  unless required content becomes inaccessible or absent.
+
+### Content Accuracy
+
+- Cap at 4 if there is any meaningful ambiguity, possible misconception,
+  misleading simplification, or visual/narration mismatch that could confuse the
+  target learner.
+- Cap at 3 if a factual issue, visual, or narration implies an incorrect
+  relationship, process, or conclusion.
+- Do not give 5 only because no errors were noticed; there must be affirmative
+  evidence that important claims are correct.
+
+### Visual Quality
+
+- Cap at 4 if any meaningful visual defect appears, including missing spaces,
+  tiny text, overlapping labels, cropped objects, low contrast, unreadable
+  equations, broken rendering, confusing arrows, or mistimed/jumpy animation.
+- Cap at 3 if a visual defect blocks understanding, changes meaning, or makes an
+  instructional element hard to trust.
+- Missing a useful visual affects Multimedia Learning Design, not Visual Quality,
+  unless the absence creates a technical/readability problem.
+
+### Multimedia Learning Design
+
+- Cap at 4 if visuals are mistimed, generic, decorative, distracting, weakly
+  connected to narration, or visually flawed in a way that affects learning.
+- Cap at 3 if a visual defect teaches incorrect information, conflicts with
+  narration, or makes a key concept harder to learn.
+- Attractive visuals do not earn a high score unless they support the learning
+  goal and narration.
+
+### Logic
+
+- Cap at 4 if transitions are sometimes abrupt or mechanically stitched, but the
+  concept sequence is still easy to follow.
+- Cap at 3 if abrupt transitions, weak connections, missing bridge explanations,
+  prerequisite shifts, or overload noticeably hurt comprehension.
+- Cap at 2 if the lesson frequently shifts between concepts in a confusing
+  order.
+
+### Learning Adaptation
+
+- Cap at 4 if pacing, terminology, examples, prerequisite assumptions, or
+  explanation depth are only mostly appropriate rather than consistently matched.
+- Cap at 3 if the video assumes knowledge not present in the target learner
+  profile and does not scaffold it.
+- Do not penalize for learners outside the provided or inferred target audience.
+
+### Bloom Alignment
+
+- Cap at 4 if support for the intended Bloom level is present but brief,
+  optional, uneven, or concentrated in one small moment.
+- Cap at 3 if most of the lesson operates below the intended Bloom level.
+- Announced cognitive goals do not count unless the video demonstrates the
+  cognitive action or asks the learner to perform it.
+
+### ICAP Alignment
+
+- Cap at 4 if engagement prompts are brief, optional, or not sustained.
+- Cap at 3 if learners mostly watch or listen while the expected level is Active,
+  Constructive, or Interactive.
+- Rhetorical questions, narrator self-questions, and transitions do not count as
+  Active or Constructive unless the learner is explicitly asked to do cognitive
+  work such as pause, answer, calculate, predict, explain, compare, justify, or
+  create.
 
 ## Bloom-to-ICAP Reference
 

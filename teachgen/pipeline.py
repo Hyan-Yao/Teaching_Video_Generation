@@ -6,8 +6,11 @@ purely through schema objects, and per-segment work fans out across a thread poo
 
 from __future__ import annotations
 
+import hashlib
 import json
+import shutil
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 from .config import Config
 from teachgen.eval.models import EvaluationResult
@@ -37,13 +40,26 @@ def generate(cfg: Config) -> dict:
     result = phase2_produce(cfg, provider, plan)
     if cfg.run_evaluator_baseline:
         video_path = result["video_path"]
-        _log(f"Running evaluator baseline -> {cfg.evaluator_baseline_dir}")
-        evaluation_path = eval_runner.run_lesson_evaluation(
-            plan,
-            video_path,
-            cfg.evaluator_baseline_dir,
-            chunk_seconds=cfg.evaluator_chunk_seconds,
-        )
+        last_evaluation_path = result.get("last_evaluation_path")
+        last_evaluated_video_sha = result.get("last_evaluated_video_sha256")
+        video_sha = _file_sha256(Path(video_path))
+        if last_evaluation_path and last_evaluated_video_sha == video_sha:
+            _log(
+                "Reusing last evaluator result for baseline; "
+                "final video matches the last evaluated draft."
+            )
+            evaluation_path = _copy_evaluation_outputs(
+                Path(last_evaluation_path),
+                cfg.evaluator_baseline_dir,
+            )
+        else:
+            _log(f"Running evaluator baseline -> {cfg.evaluator_baseline_dir}")
+            evaluation_path = eval_runner.run_lesson_evaluation(
+                plan,
+                video_path,
+                cfg.evaluator_baseline_dir,
+                chunk_seconds=cfg.evaluator_chunk_seconds,
+            )
         result["evaluation_path"] = str(evaluation_path)
     return result
 
@@ -109,6 +125,8 @@ def phase2_produce(cfg: Config, provider: Provider, plan: LessonPlan) -> dict:
     audio_cache: dict[str, NarrationAudio] = {}
     visual_cache: dict[str, VisualAsset] = {}
     draft_path = None
+    last_evaluation_path = None
+    last_evaluated_video_sha = None
 
     for outer_rnd in range(cfg.max_outer_rounds + 1):
         # --- render all dirty segments ---
@@ -141,6 +159,8 @@ def phase2_produce(cfg: Config, provider: Provider, plan: LessonPlan) -> dict:
                 evaluation_dir,
                 chunk_seconds=cfg.evaluator_chunk_seconds,
             )
+            last_evaluation_path = evaluation_path
+            last_evaluated_video_sha = _file_sha256(draft_path)
             evaluation = EvaluationResult.model_validate_json(
                 evaluation_path.read_text(encoding="utf-8")
             )
@@ -273,7 +293,12 @@ def phase2_produce(cfg: Config, provider: Provider, plan: LessonPlan) -> dict:
             for sid in dirty_visual:        # brief updated → re-render only
                 visual_cache.pop(sid, None)
 
-    return {"plan_path": str(cfg.plan_path), "video_path": str(draft_path)}
+    return {
+        "plan_path": str(cfg.plan_path),
+        "video_path": str(draft_path),
+        "last_evaluation_path": str(last_evaluation_path) if last_evaluation_path else None,
+        "last_evaluated_video_sha256": last_evaluated_video_sha,
+    }
 
 
 def _review_composite(
@@ -385,10 +410,28 @@ def _render_segment(cfg, provider, seg: Segment, audio: NarrationAudio) -> Visua
 def _finalize(cfg: Config, draft_path):
     final = cfg.video_dir / "final.mp4"
     if str(draft_path) != str(final):
-        import shutil
-
         shutil.copy(draft_path, final)
     return final
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _copy_evaluation_outputs(source_evaluation_path: Path, target_dir: Path) -> Path:
+    source_dir = source_evaluation_path.parent
+    target_dir.mkdir(parents=True, exist_ok=True)
+    for item in source_dir.iterdir():
+        target = target_dir / item.name
+        if item.is_dir():
+            shutil.copytree(item, target, dirs_exist_ok=True)
+        else:
+            shutil.copy2(item, target)
+    return target_dir / source_evaluation_path.name
 
 
 def _log(msg: str) -> None:

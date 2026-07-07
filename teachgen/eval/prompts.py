@@ -10,11 +10,19 @@ Identify:
 
 Rules:
 - Do not assign rubric scores.
+- Do not praise, grade, or summarize lesson quality. Avoid words like strong,
+  clear, effective, well-aligned, excellent, or poor unless those exact words
+  are spoken or visible in the video.
 - Do not infer the objectives of the entire lecture.
 - Extract only what is directly visible or audible in this chunk. Do not add
   expected concepts, missing concepts, or judgments about lesson quality.
+- Do not infer that a concept was covered because it would normally belong in
+  this topic. Record only concepts that are explicitly spoken, written, shown,
+  demonstrated, or asked of the learner.
 - Prefer short, literal descriptions over broad interpretations. If two
   descriptions are possible, choose the more conservative one.
+- Preserve concrete concerns and possible inaccuracies when observed. Do not
+  smooth them into a generally positive summary.
 - Use timestamps relative to this video chunk.
 - The only valid timestamp range is the chunk range supplied in the user
   message. Never report evidence outside that range.
@@ -31,6 +39,12 @@ Analyze this instructional video chunk for directly observable visual and multim
 Identify:
 - Visual elements shown, including text, diagrams, equations, charts, and animations
 - Visual defects, including unreadable text, clutter, broken rendering, or incorrect visuals
+- Animation-specific defects, including objects that jump, overlap, disappear,
+  render off-screen, move without clear purpose, point to unclear targets, or
+  fail to match the narration
+- Text/layout defects, including tiny text, missing spaces between words,
+  cropped labels, excessive empty space, cramped grouping, low contrast, or
+  diagrams that are too small to inspect
 - Moments where narration and visuals align or conflict
 - Visuals that meaningfully support understanding
 - Concepts that would benefit from visual support but receive none
@@ -38,8 +52,37 @@ Identify:
 Rules:
 - Do not assign rubric scores.
 - Do not judge the entire lecture.
+- Do not praise or globally summarize visual quality. Avoid words like strong,
+  clear, effective, well-aligned, excellent, or poor as global judgments. Record
+  factual visual observations instead.
 - Extract only what is directly visible or audible in this chunk. Do not add
   expected visuals, missing concepts, or global instructional judgments.
+- Do not infer that a visual supports learning because it appears intended to
+  support learning. Record what is shown and whether the visible elements match
+  the narration at that moment.
+- List every visible defect you observe, including minor defects. If a defect is
+  visible at multiple moments, report each distinct moment or range.
+- Inspect animations as rendered artifacts, not just as intended concepts. If
+  an animation is supposed to show a useful idea but the actual rendering is
+  cramped, unreadable, visually broken, mostly empty, poorly synchronized, or
+  hard to interpret, report that as a visual_defect.
+- Be skeptical of generated animations. Do not call an animation effective just
+  because it contains relevant objects such as a graph, arrow, equation, or
+  label. It is effective only if the rendered objects are readable, spatially
+  coherent, large enough, and timed/aligned with the narration.
+- For each animated segment, include at least one observation about animation
+  execution in either visual_elements, visual_defects, audio_visual_alignment,
+  or effective_visual_support.
+- Treat the following as visual defects when observed: overlapping text,
+  missing spaces between words, labels too small to read, formulas too small to
+  inspect, excessive empty canvas, elements clustered in one corner, arrows
+  pointing ambiguously, diagrams disconnected from labels, low-contrast text,
+  off-screen or cropped objects, unreadable equations, broken or jumpy motion,
+  mistimed animation, visual/narration mismatch, and motion that does not
+  clarify the concept.
+- Do not summarize a broken visual by its intended purpose alone. Describe the
+  visible failure concretely, e.g. "left bullet text is tiny and words are
+  merged" rather than "slide lists confidence interval facts."
 - Prefer short, literal descriptions of the actual visual/audio relationship.
   If unsure whether a visual supports learning, describe the observed alignment
   conservatively.
@@ -69,6 +112,8 @@ Identify:
 
 Rules:
 - Report observable pedagogical behavior, not final rubric scores.
+- Do not praise, grade, or summarize pedagogical quality. Avoid words like
+  strong, effective, engaging, well-scaffolded, or excellent as judgments.
 - Do not infer the intended Bloom or ICAP level of the entire lecture.
 - Extract only what is directly visible or audible in this chunk. Do not add
   expected pedagogy, missing activities, or judgments about overall lesson
@@ -82,6 +127,13 @@ Rules:
 - ICAP signals must describe whether the learner is encouraged to engage
   passively, actively, constructively, or interactively.
 - Do not treat narration alone as active learner engagement.
+- Do not treat rhetorical questions, transitions, or narrator self-questions as
+  Active or Constructive unless the learner is explicitly asked to pause,
+  answer, calculate, predict, explain, compare, justify, create, or otherwise
+  perform cognitive work.
+- Classify ICAP evidence conservatively. If a prompt is brief, optional, or not
+  clearly directed at the learner, record it as weak evidence rather than strong
+  engagement.
 - Do not invent learner activities, questions, scaffolding, or prerequisites.
 - Use timestamps relative to this video chunk.
 - The only valid timestamp range is the chunk range supplied in the user
@@ -110,6 +162,13 @@ Rules:
 - Base every inference on supporting timestamped evidence.
 - Summarize only what this chunk actually supports. Do not strengthen brief
   mentions into detailed explanations, demonstrations, or applications.
+- Do not upgrade weak extractor evidence into stronger conclusions. If the
+  extractor reports a brief mention, weak prompt, visual defect, possible
+  inaccuracy, or uncertainty, preserve that limitation in the inferred fields.
+- Do not drop visual defects, possible accuracy issues, weak prompts, or other
+  concerns because the section is otherwise understandable or effective.
+- When evidence is mixed, preserve both strengths and weaknesses rather than
+  converting the section into a one-sided positive summary.
 - Build observed_concepts from the chunk's definitions, claims, examples,
   demonstrations, and activities. Classify each observed depth as mention,
   brief_explanation, detailed_explanation, demonstration, or application.
@@ -119,6 +178,8 @@ Rules:
 - Do not infer conclusions about the entire lecture.
 - Do not add expected concepts, missing objectives, or whole-lecture
   improvement suggestions in section-level fields.
+- Do not infer local objectives that are easier than what the evidence actually
+  supports. Objectives must match the observed depth and cognitive action.
 - Distinguish announced future goals from learning actions actually supported.
 - Infer local learning objectives from what the section actually teaches or
   enables, not solely from goals announced for later sections.
@@ -153,6 +214,9 @@ Rules:
 - Use provided metadata when available, but verify it against lecture evidence.
 - Treat provided learning_objectives and student_persona as deterministic
   source-of-truth targets when they are present in the metadata.
+- Treat provided intended Bloom and expected ICAP as source-of-truth targets
+  when present in the metadata. Do not replace them with easier targets inferred
+  from the produced video.
 - Only infer learning objectives when the metadata provides no
   learning_objectives. When objectives are provided, copy their meaning into
   learning_objectives and use lecture evidence only to determine whether each
@@ -167,6 +231,13 @@ Rules:
   materially contribute to the conclusion.
 - When no relevant metadata was provided, use source='inferred'.
 - Base inferred conclusions on timestamped supporting evidence.
+- Do not upgrade weak section evidence into stronger lecture-level conclusions.
+  If section evidence reports brief coverage, weak prompts, visual defects,
+  possible inaccuracies, or uncertainty, preserve those limitations in lecture
+  concerns or observed concept depth.
+- Do not drop visual defects or concerns because the overall lecture seems good.
+- When section evidence is mixed, preserve both strengths and weaknesses rather
+  than smoothing the lecture into a uniformly positive summary.
 - Infer expectations appropriate to the lecture's duration and scope.
 - Keep observed content and expected content separate.
 - Build observed_concepts only from lecture evidence. For each observed concept,
@@ -287,6 +358,14 @@ Rating scale:
 
 - Score only the two assigned metrics.
 - Return metric names exactly as written above.
+- Score 5 only when the extracted evidence shows excellent performance with no
+  meaningful weakness for that metric.
+- Score 4 when performance is strong but there is any minor weakness, omission,
+  ambiguity, unsupported opportunity, or conflicting evidence.
+- If uncertain between 4 and 5, choose 4.
+- If evidence is mixed, choose the lower score that reflects the weakness.
+- Do not assign 5 from general positive language alone. A 5 requires specific
+  positive evidence and no meaningful conflicting evidence.
 - Always prefer provided objectives and scope when available. 
 - Only infer objectives or scope when they are not provided.
 - When metadata is unavailable, use inferred objectives and scope cautiously and
@@ -309,6 +388,12 @@ Rating scale:
   covered, merely mentioned, or absent before assigning the overall score.
 - Do not award a score of 5 when any core expected concept is absent or covered
   below its expected depth.
+- Do not award Learning Objective Coverage = 5 unless every provided objective,
+  key learning point, and core expected concept is explicitly covered at the
+  expected depth for the lecture scope.
+- If any objective or key learning point is only briefly mentioned,
+  indirectly implied, or covered below expected depth, Learning Objective
+  Coverage must be at most 4.
 - Do not penalize content outside the lecture's stated or inferred scope.
 - Do not invent expected supporting details, examples, or topic variants unless
   they are required by the stated or inferred scope.
@@ -318,6 +403,13 @@ Rating scale:
 - Distinguish confirmed factual errors from possible accuracy concerns.
 - A high Content Accuracy score requires affirmative evidence that important
   claims are correct. Absence of flagged accuracy issues alone is insufficient.
+- Do not award Content Accuracy = 5 if there is any meaningful ambiguity,
+  misleading simplification, possible misconception, or visual/narration
+  mismatch that could reasonably confuse the target learner.
+- If a factual issue is possible but not confirmed and does not change the main
+  meaning, Content Accuracy should usually be 4 rather than 5.
+- If visual or narration evidence implies an incorrect relationship, process, or
+  conclusion, Content Accuracy should be at most 3.
 - Do not use missing activities, visual aids, or prerequisite review as evidence
   against Content Accuracy unless they create a misleading or incorrect claim.
 - Every score must cite timestamped supporting evidence.
@@ -374,7 +466,8 @@ Rating scale:
 ## Logic
 
 Question:
-Does the lesson build coherently without unjustified jumps or overload?
+Does the lesson present concepts in a coherent instructional order, with enough
+connective explanation for the learner to follow?
 
 Rating scale:
 - 1 Poor: The lesson lacks coherent instructional flow, with disconnected
@@ -392,13 +485,40 @@ Rating scale:
 
 - Score only the three assigned metrics.
 - Return metric names exactly as written above.
+- Score 5 only when the extracted evidence shows excellent performance with no
+  meaningful weakness for that metric.
+- Score 4 when performance is strong but there is any minor weakness, omission,
+  artifact, unclear moment, missed opportunity, or conflicting evidence.
+- If uncertain between 4 and 5, choose 4.
+- If evidence is mixed, choose the lower score that reflects the weakness.
+- Do not assign 5 from general positive language alone. A 5 requires specific
+  positive evidence and no meaningful conflicting evidence.
 - Judge Visual Quality from readability, rendering, layout, and technical
   correctness. Do not lower it merely because a useful visual was absent.
+- Visual Quality cannot be 5 if any meaningful visual defect is extracted,
+  including missing spaces, tiny text, overlapping labels, cropped objects, low
+  contrast, unreadable equations, broken rendering, confusing arrows, or
+  mistimed/jumpy animation.
+- If a visual defect blocks understanding, changes meaning, or makes an
+  instructional element hard to trust, Visual Quality should be at most 3.
 - Judge Multimedia Learning Design from alignment, instructional value, timing,
   and missed opportunities. Attractive formatting alone does not prove strong
   multimedia learning design.
+- Multimedia Learning Design cannot be 5 if visuals are mistimed, generic,
+  decorative, distracting, weakly connected to narration, or visually flawed in
+  a way that affects learning.
+- If a visual defect teaches incorrect information, conflicts with narration, or
+  makes a key concept harder to learn, Multimedia Learning Design should be at
+  most 3.
 - Judge Logic from sequencing, conceptual connections, transitions, and
   cognitive flow across the complete lecture.
+- Logic should be at most 4 if transitions are sometimes abrupt or mechanically
+  stitched, but the concept sequence is still easy to follow.
+- Logic should be at most 3 if abrupt transitions, weak connections, missing
+  bridge explanations, prerequisite shifts, or overload noticeably hurt
+  comprehension.
+- Logic should be at most 2 if the lesson frequently shifts between concepts in
+  a confusing order.
 - Do not penalize a short lecture for having few transitions when its scope
   genuinely requires only a simple progression.
 - Missing visuals should affect Multimedia Learning Design only when the concept
@@ -478,6 +598,14 @@ Rating scale:
 
 - Score only the three assigned metrics.
 - Return metric names exactly as written above.
+- Score 5 only when the extracted evidence shows excellent performance with no
+  meaningful weakness for that metric.
+- Score 4 when performance is strong but there is any minor weakness, mismatch,
+  brief support, unsupported opportunity, or conflicting evidence.
+- If uncertain between 4 and 5, choose 4.
+- If evidence is mixed, choose the lower score that reflects the weakness.
+- Do not assign 5 from general positive language alone. A 5 requires specific
+  positive evidence and no meaningful conflicting evidence.
 - For Learning Adaptation, prefer a provided student persona. When no persona is
   provided, use the inferred learner background cautiously and set
   based_on_inferred_context=true.
@@ -505,18 +633,40 @@ Rating scale:
 - Do not assume that using a relatable example alone proves strong adaptation.
   Consider prerequisite assumptions, terminology, pacing, explanation depth,
   and scaffolding together.
+- Learning Adaptation cannot be 5 if pacing, terminology, examples, prerequisite
+  assumptions, or explanation depth are only mostly appropriate rather than
+  consistently well matched to the target learner.
+- If the lesson assumes knowledge not clearly present in the target learner
+  profile and does not scaffold it, Learning Adaptation should be at most 4, or
+  at most 3 if understanding is hindered.
 - For Bloom Alignment, compare intended_bloom_level against Bloom levels
   actually supported by section evidence and raw pedagogy evidence.
 - Do not infer or revise the intended Bloom level. Use
   LectureInference.intended_bloom_level as the target.
 - Announced cognitive goals do not count as supported Bloom evidence unless the
   lecture demonstrates the cognitive action or asks the learner to perform it.
+- Bloom Alignment cannot be 5 unless the intended cognitive level is supported
+  repeatedly and clearly across the relevant instructional experience.
+- If support for the intended Bloom level is present but brief, optional, uneven,
+  or concentrated in only one small moment, Bloom Alignment should be at most 4.
+- If most of the lesson operates below the intended Bloom level, Bloom Alignment
+  should be at most 3.
 - For ICAP Alignment, compare expected_icap_level against observed ICAP signals,
   learner activities, questions, checks for understanding, and opportunities to
   generate or interact.
 - Do not infer or revise the expected ICAP level. Use
   LectureInference.expected_icap_level as the target.
 - Narration and slide viewing alone count as Passive engagement.
+- ICAP Alignment cannot be 5 unless the expected engagement level is supported
+  repeatedly and clearly, not just through one brief prompt.
+- Rhetorical questions, narrator self-questions, or transitions do not count as
+  Active or Constructive unless the learner is explicitly asked to do cognitive
+  work.
+- If engagement prompts are brief, optional, or not sustained, ICAP Alignment
+  should be at most 4.
+- If the lesson mostly asks learners only to watch or listen while the expected
+  level is Active, Constructive, or Interactive, ICAP Alignment should be at
+  most 3.
 - Do not lower Bloom Alignment merely because engagement is passive if the
   intended Bloom level can reasonably be supported passively.
 - Do not lower ICAP Alignment merely because the lecture lacks interaction when
