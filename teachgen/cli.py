@@ -35,10 +35,22 @@ def main() -> None:
     ap.add_argument("--visual-text-model", help="override the visual helper/code animation model")
     ap.add_argument(
         "--animation-code-model",
-        help="override the OpenRouter model used for Code2Video Manim code/refinement",
+        help=(
+            "override the OpenRouter model used as the code2video_critic backbone "
+            "(judges the rendered frames and repairs the code after the initial "
+            "GPT-5 generation; has no effect in --animation-mode basic)"
+        ),
     )
     ap.add_argument("--tts-model", help="override the TTS model")
     ap.add_argument("--image-model", help="override the image model")
+    ap.add_argument(
+        "--no-reviewer",
+        action="store_true",
+        help=(
+            "master switch: disable both the lesson-plan reviewer and the video "
+            "reviewer, regardless of --plan-refinement-mode/--feedback-mode"
+        ),
+    )
     ap.add_argument(
         "--plan-refinement-mode",
         choices=["none", "evaluator"],
@@ -79,7 +91,11 @@ def main() -> None:
         "--animation-mode",
         choices=["basic", "code2video_critic"],
         default="basic",
-        help="basic uses the current one-pass animation path; code2video_critic enables Code2Video's grid visual critic loop",
+        help=(
+            "basic uses the current one-pass animation path (GPT-5 only); "
+            "code2video_critic keeps GPT-5 for the initial generation and adds a "
+            "Claude-backed critic pass that judges the render and repairs the code"
+        ),
     )
     ap.add_argument(
         "--animation-feedback-rounds",
@@ -107,6 +123,7 @@ def main() -> None:
     cfg = Config.from_env(
         request=request,
         provider=args.provider,
+        use_reviewer=not args.no_reviewer,
         plan_refinement_mode=args.plan_refinement_mode,
         max_plan_rounds=args.max_plan_rounds,
         use_feedback=feedback_mode != "none",

@@ -48,6 +48,8 @@ class RunConfig:
     use_feedback: bool = True
     use_assets: bool = True
     api: Callable = None
+    critic_api: Callable = None          # code-rewrite backbone for post-critic repair; falls back to `api`
+    critic_vision_api: Callable = None    # vision backbone that judges rendered frames; falls back to the built-in GPT critic
     feedback_rounds: int = 2
     iconfinder_api_key: str = ""
     max_code_token_length: int = 10000
@@ -72,7 +74,9 @@ class TeachingVideoAgent:
 
         self.use_feedback = cfg.use_feedback
         self.use_assets = cfg.use_assets
-        self.API = cfg.api
+        self.API = cfg.api                                    # initial generation + its own bug-fix loop
+        self.critic_API = cfg.critic_api or cfg.api           # post-critic code regeneration/repair
+        self.critic_vision_API = cfg.critic_vision_api        # None => use the built-in GPT vision critic
         self.feedback_rounds = cfg.feedback_rounds
         self.iconfinder_api_key = cfg.iconfinder_api_key
         self.max_code_token_length = cfg.max_code_token_length
@@ -437,7 +441,14 @@ class TeachingVideoAgent:
             return has_layout_issues, suggested_improvements
 
         try:
-            response = request_gpt5_video_img(prompt=analysis_prompt, video_path=video_path, image_path=self.GRID_IMG_PATH)
+            if self.critic_vision_API is not None:
+                response = self.critic_vision_API(
+                    prompt=analysis_prompt, video_path=video_path, image_path=self.GRID_IMG_PATH
+                )
+            else:
+                response = request_gpt5_video_img(
+                    prompt=analysis_prompt, video_path=video_path, image_path=self.GRID_IMG_PATH
+                )
             feedback_content = extract_answer_from_response(response)
             has_layout_issues, suggested_improvements = _parse_layout(feedback_content)
             feedback = VideoFeedback(
@@ -461,7 +472,11 @@ class TeachingVideoAgent:
             )
 
     def optimize_with_feedback(self, section: Section, feedback: VideoFeedback) -> bool:
-        """Optimize the code based on feedback from the MLLM"""
+        """Optimize the code based on feedback from the MLLM.
+
+        Runs on the critic backbone (self.critic_API), not the initial-generation
+        backbone (self.API), so a run can e.g. generate with GPT-5 and repair with Claude.
+        """
         if not feedback.has_issues or not feedback.suggested_improvements:
             print(f"✅ {self.learning_topic} {section.id} no optimization needed")
             return True
@@ -469,42 +484,51 @@ class TeachingVideoAgent:
         # === Step 1: back up original code ===
         original_code_content = self.section_codes[section.id]
 
-        for attempt in range(self.max_feedback_gen_code_tries):
-            print(
-                f"🎯 {self.learning_topic} MLLM feedback optimization {section.id} code, attempt {attempt + 1}/{self.max_feedback_gen_code_tries}"
-            )
-
-            # === Step 2: back up original code and apply improvements ===
-            if attempt > 0:
-                self.section_codes[section.id] = original_code_content
-
-            # === Step 3: re-generate code with feedback ===
-            self.generate_section_code(
-                section=section, attempt=attempt + 1, feedback_improvements=feedback.suggested_improvements
-            )
-            success = self.debug_and_fix_code(section.id, max_fix_attempts=self.max_mllm_fix_bugs_tries)
-            if success:
-                optimized_output_dir = self.output_dir / "optimized_videos"
-                optimized_output_dir.mkdir(exist_ok=True)
-                optimized_video_path = optimized_output_dir / f"{section.id}_optimized.mp4"
-
-                if section.id in self.section_videos:
-                    original_video_path = Path(self.section_videos[section.id])
-                    if original_video_path.exists():
-                        original_video_path.rename(optimized_video_path)
-                        self.section_videos[section.id] = str(optimized_video_path)
-                        print(f"✨ {self.learning_topic} {section.id} optimized video saved: {optimized_video_path}")
-                    else:
-                        print(f"⚠️ {self.learning_topic} {section.id} original video file not found: {original_video_path}")
-                else:
-                    print(f"⚠️ {self.learning_topic} {section.id} no optimized video path found")
-                return True
-            else:
+        # Swap in the critic backbone for the duration of this repair pass.
+        original_api = self.API
+        original_fixer_api = self.scope_refine_fixer.request_gpt
+        self.API = self.critic_API
+        self.scope_refine_fixer.request_gpt = self.critic_API
+        try:
+            for attempt in range(self.max_feedback_gen_code_tries):
                 print(
-                    f"❌ {self.learning_topic} {section.id} MLLM optimization failed, attempt {attempt + 1}/{self.max_feedback_gen_code_tries}"
+                    f"🎯 {self.learning_topic} MLLM feedback optimization {section.id} code, attempt {attempt + 1}/{self.max_feedback_gen_code_tries}"
                 )
 
-        return False
+                # === Step 2: back up original code and apply improvements ===
+                if attempt > 0:
+                    self.section_codes[section.id] = original_code_content
+
+                # === Step 3: re-generate code with feedback ===
+                self.generate_section_code(
+                    section=section, attempt=attempt + 1, feedback_improvements=feedback.suggested_improvements
+                )
+                success = self.debug_and_fix_code(section.id, max_fix_attempts=self.max_mllm_fix_bugs_tries)
+                if success:
+                    optimized_output_dir = self.output_dir / "optimized_videos"
+                    optimized_output_dir.mkdir(exist_ok=True)
+                    optimized_video_path = optimized_output_dir / f"{section.id}_optimized.mp4"
+
+                    if section.id in self.section_videos:
+                        original_video_path = Path(self.section_videos[section.id])
+                        if original_video_path.exists():
+                            original_video_path.rename(optimized_video_path)
+                            self.section_videos[section.id] = str(optimized_video_path)
+                            print(f"✨ {self.learning_topic} {section.id} optimized video saved: {optimized_video_path}")
+                        else:
+                            print(f"⚠️ {self.learning_topic} {section.id} original video file not found: {original_video_path}")
+                    else:
+                        print(f"⚠️ {self.learning_topic} {section.id} no optimized video path found")
+                    return True
+                else:
+                    print(
+                        f"❌ {self.learning_topic} {section.id} MLLM optimization failed, attempt {attempt + 1}/{self.max_feedback_gen_code_tries}"
+                    )
+
+            return False
+        finally:
+            self.API = original_api
+            self.scope_refine_fixer.request_gpt = original_fixer_api
 
     def generate_codes(self) -> Dict[str, str]:
         if not self.sections:

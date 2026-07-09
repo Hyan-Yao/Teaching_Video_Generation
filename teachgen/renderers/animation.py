@@ -5,10 +5,12 @@ multi-section orchestration). Instead, per segment, we:
 
   1. Convert the segment into code2video's `Section` shape (short on-screen lecture
      lines, each paired with an animation description) via the Provider.
-  2. Build a code2video RunConfig whose `api` callable is either a shim over our
-     Provider (basic mode) or an OpenRouter Claude shim (critic mode). The basic
-     path keeps Code2Video's visual feedback disabled. The critic path enables
-     Code2Video's grid-based visual feedback loop while keeping external assets off.
+  2. Build a code2video RunConfig. `api` (initial generation + its own bug-fix loop)
+     is always the teachgen Provider shim (GPT-5), so the first pass stays on the same
+     backbone as every other method — only the critic-repair loop below is model-swapped.
+     In critic mode, `critic_api`/`critic_vision_api` route the post-render judge-and-repair
+     pass through Claude (via OpenRouter): Claude looks at the rendered frames, decides
+     what's wrong, and rewrites the code — the initial generation is untouched by this.
   3. Run generate_section_code() then render_section(), which renders Manim and runs
      the self-repair loop, landing an .mp4 in agent.section_videos[seg.id].
   4. Copy that clip into teachgen's assets dir and return it as a VisualAsset(video).
@@ -19,6 +21,7 @@ pipeline transparently falls back to a slide for that segment.
 
 from __future__ import annotations
 
+import base64
 import shutil
 import sys
 import importlib.util
@@ -27,6 +30,8 @@ import os
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+import cv2
 
 from pydantic import BaseModel, Field
 
@@ -82,7 +87,13 @@ class AnimationRenderer:
 
         use_critic = ctx.cfg.animation_mode == "code2video_critic"
         cfg = agent_mod.RunConfig(
-            api=_openrouter_code2video_api(ctx) if use_critic else _provider_api(ctx),
+            # Initial generation always goes through the same backbone as every other
+            # method (GPT-5 via teachgen's Provider) so comparisons stay apples-to-apples.
+            api=_provider_api(ctx),
+            # Critic mode adds a Claude-backed pass that judges the render and
+            # regenerates/repairs the code afterward; it never touches the first pass.
+            critic_api=_openrouter_code2video_api(ctx) if use_critic else None,
+            critic_vision_api=_openrouter_claude_vision_api(ctx) if use_critic else None,
             use_feedback=use_critic,
             use_assets=False,
             feedback_rounds=max(0, ctx.cfg.animation_feedback_rounds),
@@ -262,6 +273,83 @@ def _openrouter_code2video_api(ctx: RenderContext):
         }
 
     return api
+
+
+def _openrouter_claude_vision_api(ctx: RenderContext):
+    """Code2Video-compatible video-critic callable backed by Claude vision via OpenRouter.
+
+    Same frame-sampling as code2video's built-in GPT critic (request_gpt5_video_img),
+    just routed to Claude so the "identify issues" judgment and the "rewrite the code"
+    step in optimize_with_feedback both come from the same critic backbone.
+    """
+    api_key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not api_key:
+        raise RuntimeError(
+            "OPENROUTER_API_KEY is required for --animation-mode code2video_critic"
+        )
+
+    model = ctx.cfg.models.animation_code
+
+    class _Resp:
+        def __init__(self, content):
+            self.choices = [type("C", (), {"message": type("M", (), {"content": content})})]
+
+    def critic(prompt, video_path, image_path, max_tokens=4000, **_):
+        content = [{"type": "text", "text": prompt}]
+        for b64 in (*_extract_video_frames_b64(video_path), _read_image_b64(image_path)):
+            content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}})
+
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": content}],
+            "max_tokens": min(max_tokens, 4000),
+        }
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            "https://openrouter.ai/api/v1/chat/completions",
+            data=data,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://github.com/Teaching_Video_Generation",
+                "X-Title": "Teaching Video Generation",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                raw = resp.read().decode("utf-8")
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"OpenRouter animation critic call failed: {e.code} {detail}") from e
+
+        body = json.loads(raw)
+        content_text = body.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if not content_text:
+            raise RuntimeError(f"OpenRouter animation critic call returned no content: {raw[:500]}")
+        return _Resp(content_text)
+
+    return critic
+
+
+def _extract_video_frames_b64(video_path: str) -> list[str]:
+    """Sample 5 frames (10/30/50/70/90%) as base64 JPEG, matching code2video's GPT critic."""
+    cap = cv2.VideoCapture(video_path)
+    total = max(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), 1)
+    frames_b64 = []
+    for frac in (0.1, 0.3, 0.5, 0.7, 0.9):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(total * frac))
+        ok, frame = cap.read()
+        if ok:
+            _, buf = cv2.imencode(".jpg", frame)
+            frames_b64.append(base64.b64encode(buf).decode())
+    cap.release()
+    return frames_b64
+
+
+def _read_image_b64(image_path) -> str:
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
 
 
 def _neighbor_context(plan, segment_id: str) -> str:

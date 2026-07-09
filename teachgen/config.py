@@ -20,7 +20,7 @@ class ModelConfig:
     refinement_text: str = "gpt-5"  # plan/repair/refinement LLM calls only
     vision: str = "gpt-5"           # MLLM reviewer (reads sampled video frames)
     visual_text: str = "gpt-4o"     # slide/image prompts + code2video animation code
-    animation_code: str = "~anthropic/claude-opus-latest"  # Code2Video Manim code via OpenRouter
+    animation_code: str = "~anthropic/claude-opus-latest"  # code2video_critic backbone (post-render judge + repair), via OpenRouter
     tts: str = "gpt-4o-mini-tts"    # narration synthesis
     transcribe: str = "whisper-1"   # word-level timestamps for A/V alignment
     image: str = "gpt-image-2"      # concept_image renderer
@@ -38,6 +38,7 @@ class Config:
     models: ModelConfig = field(default_factory=ModelConfig)
 
     # Feedback loop
+    use_reviewer: bool = True           # master switch: False disables both reviewers below
     plan_refinement_mode: str = "none"  # "none" | "evaluator"
     max_plan_rounds: int = 1            # inner plan-refinement cap
     use_feedback: bool = True
@@ -62,6 +63,14 @@ class Config:
 
     # Where the existing repos live (we adapt, not fork, them)
     repo_root: Path = Path(__file__).resolve().parent.parent
+
+    def __post_init__(self) -> None:
+        if not self.use_reviewer:
+            # Master off-switch: no lesson-plan reviewer, no video reviewer, no
+            # matter what the individual mode flags were set to.
+            self.plan_refinement_mode = "none"
+            self.feedback_mode = "none"
+            self.use_feedback = False
 
     @classmethod
     def from_env(cls, request: TeachingRequest, **overrides) -> "Config":
