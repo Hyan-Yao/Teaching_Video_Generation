@@ -56,6 +56,7 @@ class SlideRenderer:
             f"Visual brief: {seg.visual_brief}\n\nNarration (for context): {seg.narration}",
             system=SYSTEM,
             max_tokens=600,
+            model=ctx.cfg.models.visual_text,
         )
         title, bullets, diagram = make_slide.parse_input(slide_text)
 

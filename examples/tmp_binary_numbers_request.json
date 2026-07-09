@@ -1,0 +1,22 @@
+{
+  "request_id": "binary_numbers_001",
+  "course": {
+    "topic": "Binary Numbers",
+    "learning_goal": "Explain how binary numbers represent data and how decimal numbers are converted to and from binary.",
+    "key_learning_points": [
+      "Binary representation",
+      "Base-2 system",
+      "Decimal to binary conversion",
+      "Binary to decimal conversion",
+      "Real-world computing examples"
+    ]
+  },
+  "student_persona": "Grade: High school AP Computer Science Principles\nFocus Time: 15 minutes\nBackground Knowledge: Comfortable with decimal arithmetic but completely new to binary.",
+  "pedagogy": {
+    "bloom_levels": [
+      "remember",
+      "understand"
+    ],
+    "icap_level": "active"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "request_id": "fault_tolerance_001",
+  "course": {
+    "topic": "Fault Tolerance",
+    "learning_goal": "Introduce the concept of fault tolerance and explain common strategies for building reliable computing systems.",
+    "key_learning_points": [
+      "Fault tolerance",
+      "Redundancy",
+      "Replication",
+      "Failure recovery",
+      "Real-world systems"
+    ]
+  },
+  "student_persona": "Grade: 1st-year Computer Science undergraduate\nFocus Time: 18 minutes\nBackground Knowledge: Knows basic computer architecture but no distributed systems.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "apply"
+    ],
+    "icap_level": "constructive"
+  }
+}

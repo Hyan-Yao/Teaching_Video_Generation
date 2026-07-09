@@ -27,7 +27,12 @@ def main() -> None:
     ap.add_argument("--request-json", required=True, help="path to the structured teaching request JSON")
     ap.add_argument("--provider", default="openai", choices=["openai", "gemini"])
     ap.add_argument("--text-model", help="override the text/planning/routing model")
+    ap.add_argument(
+        "--refinement-text-model",
+        help="override the plan/repair/refinement text model",
+    )
     ap.add_argument("--vision-model", help="override the vision/reviewer model")
+    ap.add_argument("--visual-text-model", help="override the visual helper/code animation model")
     ap.add_argument("--tts-model", help="override the TTS model")
     ap.add_argument("--image-model", help="override the image model")
     ap.add_argument(
@@ -95,8 +100,12 @@ def main() -> None:
     )
     if args.text_model:
         cfg.models.text = args.text_model
+    if args.refinement_text_model:
+        cfg.models.refinement_text = args.refinement_text_model
     if args.vision_model:
         cfg.models.vision = args.vision_model
+    if args.visual_text_model:
+        cfg.models.visual_text = args.visual_text_model
     if args.tts_model:
         cfg.models.tts = args.tts_model
     if args.image_model:

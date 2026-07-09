@@ -1,0 +1,23 @@
+{
+  "request_id": "tm_cs_col_003",
+  "course": {
+    "topic": "Collaboration",
+    "learning_goal": "Explain why collaboration is important in computer science projects, describe how teams use shared roles, communication, version control, and feedback cycles to develop computing artifacts, and teach learners how to evaluate whether collaboration improves the quality, inclusiveness, and reliability of a project.",
+    "key_learning_points": [
+      "Collaboration roles such as designer, developer, tester, and reviewer",
+      "Communication protocols for coordinating work and resolving disagreements",
+      "Version control and shared documents for tracking changes",
+      "Iterative feedback cycles including peer review and testing",
+      "Benefits and risks of collaboration, including diverse perspectives, coordination overhead, and accountability"
+    ]
+  },
+  "student_persona": "Grade: High School AP Computer Science Principles\nFocus Time: 15 minutes\nBackground Knowledge: Has: Basic experience working on school group projects and using shared online documents. Lacks: Formal understanding of software team roles, version control, peer review workflows, and how collaboration affects computing artifact quality.",
+  "pedagogy": {
+    "bloom_levels": [
+      "remember",
+      "understand",
+      "analyze"
+    ],
+    "icap_level": "active"
+  }
+}

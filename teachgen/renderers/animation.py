@@ -101,7 +101,11 @@ class AnimationRenderer:
             "Produce the aligned lecture_lines and animations."
         )
         return ctx.provider.chat_json(
-            prompt, _AnimSpec, system=STORYBOARD_SYSTEM, max_tokens=1500
+            prompt,
+            _AnimSpec,
+            system=STORYBOARD_SYSTEM,
+            max_tokens=1500,
+            model=ctx.cfg.models.visual_text,
         )
 
 
@@ -119,7 +123,11 @@ def _provider_api(ctx: RenderContext):
             self.choices = [type("C", (), {"message": type("M", (), {"content": content})})]
 
     def api(prompt, max_tokens=8000, **_):
-        text = provider.chat(prompt, max_tokens=min(max_tokens, 8000))
+        text = provider.chat(
+            prompt,
+            max_tokens=min(max_tokens, 8000),
+            model=ctx.cfg.models.visual_text,
+        )
         return _Resp(text), {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
     return api

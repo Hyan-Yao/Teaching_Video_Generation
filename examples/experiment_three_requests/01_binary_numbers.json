@@ -1,0 +1,23 @@
+{
+  "request_id": "tm_cs_bin_001",
+  "course": {
+    "topic": "Binary Numbers",
+    "learning_goal": "Explain the structural definition of base-2 representation and contrast it with the decimal system. Teach manual conversions of integers from decimal to binary and binary to decimal up to 8 bits, and explain how digital datatypes such as integers and ASCII characters are mapped using binary sequences.",
+    "key_learning_points": [
+      "Positional notation and base weightings such as 2^0, 2^1, and 2^2",
+      "Division-by-2 method for decimal-to-binary conversion",
+      "Positional summation method for binary-to-decimal conversion",
+      "Bit, byte, and overflow concepts within 8-bit registers",
+      "Mapping characters to binary sequences using ASCII"
+    ]
+  },
+  "student_persona": "Grade: High School AP Computer Science Principles\nFocus Time: 15 minutes\nBackground Knowledge: Has: Comfortable with standard decimal long division and positional notation such as 10^0 and 10^1. Lacks: Completely new to non-decimal math systems and lower-level memory concepts.",
+  "pedagogy": {
+    "bloom_levels": [
+      "remember",
+      "understand",
+      "apply"
+    ],
+    "icap_level": "active"
+  }
+}

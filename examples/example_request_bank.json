@@ -1,0 +1,153 @@
+[{
+  "request_id": "regression_prediction_001",
+  "course": {
+    "topic": "Regression for explanation vs. regression for prediction",
+    "learning_goal": "Deliver a clear lecture explaining the differences between using regression for explanation and using regression for prediction. Explain that the purpose of explanation is to identify and interpret important influencing factors, while the purpose of prediction is to build a model that can make accurate predictions on new data.",
+    "key_learning_points": [
+      "Regression for explanation",
+      "Regression for prediction",
+      "Training-validation split",
+      "Regularization",
+      "Statistical significance",
+      "Predictive performance",
+      "Real-world examples comparing explanation and prediction"
+    ]
+  },
+  "student_persona": "Grade: 2nd-year undergraduate students in business and social sciences\nFocus Time: 20 minutes\nBackground Knowledge: Has learned regression for explanation in a statistics course in a business or social sciences department. Lacks ideas about training-validation split, MSE, RMSE, and regularization.",
+  "pedagogy": {
+    "bloom_levels": ["remember", "understand"],
+    "icap_level": "active"
+  }
+},
+
+{
+    "request_id": "binary_numbers_001",
+    "course": {
+      "topic": "Binary Numbers",
+      "learning_goal": "Explain how binary numbers represent data and how decimal numbers are converted to and from binary.",
+      "key_learning_points": ["Binary representation","Base-2 system","Decimal to binary conversion","Binary to decimal conversion","Real-world computing examples"]
+    },
+    "student_persona": "Grade: High school AP Computer Science Principles\nFocus Time: 15 minutes\nBackground Knowledge: Comfortable with decimal arithmetic but completely new to binary.",
+    "pedagogy": {
+      "bloom_levels": ["remember","understand"],
+      "icap_level": "active"
+    }
+  },
+  {
+    "request_id": "fault_tolerance_001",
+    "course": {
+      "topic": "Fault Tolerance",
+      "learning_goal": "Introduce the concept of fault tolerance and explain common strategies for building reliable computing systems.",
+      "key_learning_points": ["Fault tolerance","Redundancy","Replication","Failure recovery","Real-world systems"]
+    },
+    "student_persona": "Grade: 1st-year Computer Science undergraduate\nFocus Time: 18 minutes\nBackground Knowledge: Knows basic computer architecture but no distributed systems.",
+    "pedagogy": {
+      "bloom_levels": ["understand","apply"],
+      "icap_level": "constructive"
+    }
+  },
+  {
+    "request_id": "vectors_math_001",
+    "course": {
+      "topic": "Vectors",
+      "learning_goal": "Teach vector notation, magnitude, direction, and basic vector addition using graphical examples.",
+      "key_learning_points": ["Vector notation","Magnitude","Direction","Vector addition","Applications"]
+    },
+    "student_persona": "Grade: 11th grade mathematics\nFocus Time: 20 minutes\nBackground Knowledge: Comfortable with algebra and coordinate geometry.",
+    "pedagogy": {
+      "bloom_levels": ["understand","apply"],
+      "icap_level": "active"
+    }
+  },
+  {
+    "request_id": "statistical_inference_001",
+    "course": {
+      "topic": "Statistical Inference",
+      "learning_goal": "Explain the intuition behind statistical inference and how samples are used to make conclusions about populations.",
+      "key_learning_points": ["Population vs sample","Sampling variability","Confidence","Hypothesis testing","Interpretation"]
+    },
+    "student_persona": "Grade: 3rd-year undergraduate statistics\nFocus Time: 25 minutes\nBackground Knowledge: Has completed introductory probability.",
+    "pedagogy": {
+      "bloom_levels": ["understand","analyze"],
+      "icap_level": "constructive"
+    }
+  },
+  {
+    "request_id": "circular_motion_001",
+    "course": {
+      "topic": "Circular Motion",
+      "learning_goal": "Explain uniform circular motion and derive the relationship between centripetal acceleration, velocity, and radius.",
+      "key_learning_points": ["Angular velocity","Centripetal force","Centripetal acceleration","Real-world examples"]
+    },
+    "student_persona": "Grade: AP Physics C\nFocus Time: 20 minutes\nBackground Knowledge: Understands Newton's Laws and vectors.",
+    "pedagogy": {
+      "bloom_levels": ["understand","apply"],
+      "icap_level": "active"
+    }
+  },
+  {
+    "request_id": "modern_physics_001",
+    "course": {
+      "topic": "Modern Physics",
+      "learning_goal": "Introduce quantum mechanics and relativity at a conceptual level, emphasizing how they differ from classical physics.",
+      "key_learning_points": ["Quantum mechanics","Relativity","Wave-particle duality","Historical motivation"]
+    },
+    "student_persona": "Grade: 2nd-year physics undergraduate\nFocus Time: 25 minutes\nBackground Knowledge: Completed introductory mechanics and electromagnetism.",
+    "pedagogy": {
+      "bloom_levels": ["understand","analyze"],
+      "icap_level": "constructive"
+    }
+  },
+  {
+    "request_id": "cellular_respiration_001",
+    "course": {
+      "topic": "Cellular Respiration",
+      "learning_goal": "Explain how cells convert glucose into ATP through the major stages of cellular respiration.",
+      "key_learning_points": ["Glycolysis","Citric acid cycle","Electron transport chain","ATP production"]
+    },
+    "student_persona": "Grade: Introductory college biology\nFocus Time: 20 minutes\nBackground Knowledge: Familiar with basic cell biology.",
+    "pedagogy": {
+      "bloom_levels": ["remember","understand"],
+      "icap_level": "active"
+    }
+  },
+  {
+    "request_id": "genetics_001",
+    "course": {
+      "topic": "Genetics",
+      "learning_goal": "Teach inheritance patterns and connect Mendelian genetics to modern genetic concepts.",
+      "key_learning_points": ["Genes","Alleles","Dominant vs recessive","Punnett squares","Pedigrees"]
+    },
+    "student_persona": "Grade: High school AP Biology\nFocus Time: 22 minutes\nBackground Knowledge: Understands DNA and cell division.",
+    "pedagogy": {
+      "bloom_levels": ["understand","apply"],
+      "icap_level": "constructive"
+    }
+  },
+  {
+    "request_id": "neural_networks_001",
+    "course": {
+      "topic": "Neural Networks",
+      "learning_goal": "Introduce the intuition behind neural networks, neurons, layers, activation functions, and training.",
+      "key_learning_points": ["Artificial neurons","Hidden layers","Activation functions","Training","Inference"]
+    },
+    "student_persona": "Grade: Senior undergraduate computer science\nFocus Time: 30 minutes\nBackground Knowledge: Comfortable with linear algebra and introductory machine learning.",
+    "pedagogy": {
+      "bloom_levels": ["understand","analyze"],
+      "icap_level": "constructive"
+    }
+  },
+  {
+    "request_id": "regression_prediction_001",
+    "course": {
+      "topic": "Regression for explanation vs. regression for prediction",
+      "learning_goal": "Deliver a clear lecture explaining the differences between explanatory and predictive regression models.",
+      "key_learning_points": ["Regression for explanation","Regression for prediction","Training-validation split","Regularization","Statistical significance","Predictive performance","Real-world examples"]
+    },
+    "student_persona": "Grade: 2nd-year undergraduate students in business and social sciences\nFocus Time: 20 minutes\nBackground Knowledge: Has learned regression for explanation but is unfamiliar with model validation and regularization.",
+    "pedagogy": {
+      "bloom_levels": ["remember","understand"],
+      "icap_level": "active"
+    }
+  }
+]

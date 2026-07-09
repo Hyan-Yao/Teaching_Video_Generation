@@ -1,0 +1,23 @@
+{
+  "request_id": "tm_bio_cel_001",
+  "course": {
+    "topic": "Cell Compartmentalization",
+    "learning_goal": "Correlate specialized sub-cellular organelle structures with their local biochemical processing tasks. Analyze how compartmentalization increases efficiency and separates incompatible cellular processes.",
+    "key_learning_points": [
+      "Eukaryotic organelles and specialized functions",
+      "Nucleus, mitochondria, endoplasmic reticulum, Golgi apparatus, and lysosomes",
+      "Membrane-bound compartments",
+      "Efficiency from separating cellular processes",
+      "Connection between organelle structure and function"
+    ]
+  },
+  "student_persona": "Grade: 9th/10th Grade Introductory Biology\nFocus Time: 15 minutes\nBackground Knowledge: Has: Basic idea that cells are the units of life. Lacks: Unclear on why cells contain multiple organelles instead of doing all processes in one shared space.",
+  "pedagogy": {
+    "bloom_levels": [
+      "remember",
+      "understand",
+      "analyze"
+    ],
+    "icap_level": "active"
+  }
+}

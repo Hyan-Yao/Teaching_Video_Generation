@@ -1,0 +1,23 @@
+{
+  "request_id": "tm_phy_fri_008",
+  "course": {
+    "topic": "Kinetic and Static Friction",
+    "learning_goal": "Differentiate the active thresholds separating self-adjusting static friction from constant kinetic friction. Compute maximal slip limits using normal force and material coefficients, and analyze slipping on inclined planes.",
+    "key_learning_points": [
+      "Static friction adjusts up to a maximum threshold",
+      "Kinetic friction after motion begins",
+      "Normal force and friction coefficients",
+      "Incline plane slipping conditions",
+      "Microscopic framing of friction as surface interaction"
+    ]
+  },
+  "student_persona": "Grade: 11th Grade AP Physics 1 Mechanics Track\nFocus Time: 15 minutes\nBackground Knowledge: Has: Expert at drawing basic free-body diagrams and balancing static weight forces. Lacks: Incorrectly assumes static friction is always equal to mu_s times normal force regardless of applied load.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "apply",
+      "analyze"
+    ],
+    "icap_level": "constructive"
+  }
+}

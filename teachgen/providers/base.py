@@ -15,12 +15,27 @@ T = TypeVar("T", bound=BaseModel)
 class Provider(Protocol):
     """All generative capabilities the pipeline needs, behind one interface."""
 
-    def chat(self, prompt: str, *, system: str = "", max_tokens: int = 4000) -> str:
+    def chat(
+        self,
+        prompt: str,
+        *,
+        system: str = "",
+        max_tokens: int = 4000,
+        model: str | None = None,
+    ) -> str:
         """Plain text in, plain text out."""
         ...
 
     def chat_json(
-        self, prompt: str, schema: Type[T], *, system: str = "", max_tokens: int = 4000
+        self,
+        prompt: str,
+        schema: Type[T],
+        *,
+        system: str = "",
+        max_tokens: int = 4000,
+        temperature: float | None = None,
+        seed: int | None = None,
+        model: str | None = None,
     ) -> T:
         """Structured output validated against a pydantic model (with retry)."""
         ...

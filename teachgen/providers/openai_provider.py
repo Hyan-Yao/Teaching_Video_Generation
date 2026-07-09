@@ -16,6 +16,9 @@ from ..schema import WordTiming
 T = TypeVar("T", bound=BaseModel)
 
 
+GPT5_MIN_COMPLETION_TOKENS = 12000
+
+
 class OpenAIProvider:
     def __init__(self, cfg: Config):
         try:
@@ -27,15 +30,28 @@ class OpenAIProvider:
         self.client = OpenAI(api_key=cfg.api_key, base_url="https://api.openai.com/v1")
 
     # ------------------------------------------------------------------ text
-    def chat(self, prompt: str, *, system: str = "", max_tokens: int = 4000) -> str:
+    def chat(
+        self,
+        prompt: str,
+        *,
+        system: str = "",
+        max_tokens: int = 4000,
+        model: str | None = None,
+    ) -> str:
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
-        resp = self.client.chat.completions.create(
-            model=self.m.text, messages=messages, max_tokens=max_tokens
+        resp = self._chat_completion_create(
+            model=model or self.m.text, messages=messages, max_tokens=max_tokens
         )
-        return resp.choices[0].message.content.strip()
+        raw = _message_content(resp)
+        if not raw:
+            raise RuntimeError(
+                "OpenAI chat returned empty content "
+                f"(model={model or self.m.text}, finish_reason={_finish_reason(resp)})"
+            )
+        return raw.strip()
 
     def chat_json(
         self,
@@ -46,6 +62,7 @@ class OpenAIProvider:
         max_tokens: int = 4000,
         temperature: float | None = None,
         seed: int | None = None,
+        model: str | None = None,
     ) -> T:
         """JSON mode + pydantic validation, with one self-correcting retry."""
         schema_json = json.dumps(schema.model_json_schema(), ensure_ascii=False)
@@ -61,7 +78,7 @@ class OpenAIProvider:
         last_err = None
         for attempt in range(2):
             kwargs = {
-                "model": self.m.text,
+                "model": model or self.m.text,
                 "messages": messages,
                 "max_tokens": max_tokens,
                 "response_format": {"type": "json_object"},
@@ -70,8 +87,23 @@ class OpenAIProvider:
                 kwargs["temperature"] = temperature
             if seed is not None:
                 kwargs["seed"] = seed
-            resp = self.client.chat.completions.create(**kwargs)
-            raw = resp.choices[0].message.content
+            resp = self._chat_completion_create(**kwargs)
+            raw = _message_content(resp)
+            if not raw:
+                last_err = RuntimeError(
+                    "OpenAI chat_json returned empty content "
+                    f"(model={model or self.m.text}, finish_reason={_finish_reason(resp)})"
+                )
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your previous response was empty. Return ONLY the JSON object "
+                            "matching the schema. Do not include prose."
+                        ),
+                    }
+                )
+                continue
             try:
                 return schema.model_validate_json(raw)
             except (ValidationError, ValueError) as e:
@@ -81,6 +113,27 @@ class OpenAIProvider:
                     {"role": "user", "content": f"That failed validation: {e}. Fix and resend."}
                 )
         raise ValueError(f"chat_json failed schema validation: {last_err}")
+
+    def _chat_completion_create(self, **kwargs):
+        kwargs = _normalize_chat_kwargs(kwargs)
+        try:
+            return self.client.chat.completions.create(**kwargs)
+        except Exception as e:
+            message = str(e)
+            retry_kwargs = dict(kwargs)
+            changed = False
+            if "max_tokens" in message and "max_tokens" in retry_kwargs:
+                retry_kwargs["max_completion_tokens"] = retry_kwargs.pop("max_tokens")
+                changed = True
+            if "temperature" in message and "temperature" in retry_kwargs:
+                retry_kwargs.pop("temperature", None)
+                changed = True
+            if "seed" in message and "seed" in retry_kwargs:
+                retry_kwargs.pop("seed", None)
+                changed = True
+            if not changed:
+                raise
+            return self.client.chat.completions.create(**retry_kwargs)
 
     # ---------------------------------------------------------------- vision
     def vision(
@@ -96,10 +149,16 @@ class OpenAIProvider:
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": content})
-        resp = self.client.chat.completions.create(
+        resp = self._chat_completion_create(
             model=self.m.vision, messages=messages, max_tokens=max_tokens
         )
-        return resp.choices[0].message.content.strip()
+        raw = _message_content(resp)
+        if not raw:
+            raise RuntimeError(
+                "OpenAI vision returned empty content "
+                f"(model={self.m.vision}, finish_reason={_finish_reason(resp)})"
+            )
+        return raw.strip()
 
     # ------------------------------------------------------------------- tts
     def tts(self, text: str, *, voice: str = "alloy") -> tuple[bytes, list[WordTiming]]:
@@ -151,3 +210,57 @@ class OpenAIProvider:
 
         with urllib.request.urlopen(result.data[0].url) as r:
             return r.read()
+
+
+def _normalize_chat_kwargs(kwargs: dict) -> dict:
+    """Adapt chat-completions kwargs for GPT-5-style reasoning models."""
+    normalized = dict(kwargs)
+    model = str(normalized.get("model", ""))
+    if not _is_gpt5_model(model):
+        return normalized
+
+    if "max_tokens" in normalized:
+        requested = normalized.pop("max_tokens") or 0
+        normalized["max_completion_tokens"] = max(
+            int(requested),
+            GPT5_MIN_COMPLETION_TOKENS,
+        )
+
+    # Some GPT-5 deployments reject these old chat-completion controls.
+    normalized.pop("temperature", None)
+    normalized.pop("seed", None)
+    return normalized
+
+
+def _is_gpt5_model(model: str) -> bool:
+    lowered = model.casefold()
+    return lowered.startswith("gpt-5") or "/gpt-5" in lowered
+
+
+def _message_content(response) -> str:
+    try:
+        content = response.choices[0].message.content
+    except Exception:
+        return ""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict):
+                text = item.get("text")
+            else:
+                text = getattr(item, "text", None)
+            if text:
+                parts.append(text)
+        return "\n".join(parts)
+    return str(content)
+
+
+def _finish_reason(response) -> str:
+    try:
+        return str(response.choices[0].finish_reason)
+    except Exception:
+        return "unknown"

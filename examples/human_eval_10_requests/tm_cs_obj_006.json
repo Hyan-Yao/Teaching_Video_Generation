@@ -1,0 +1,22 @@
+{
+  "request_id": "tm_cs_obj_006",
+  "course": {
+    "topic": "Objects: Instances of Classes",
+    "learning_goal": "Define the relationship between an abstract template class and concrete in-memory object allocations. Explain how objects are instances of classes and show how properties and behaviors differ across object instances.",
+    "key_learning_points": [
+      "Class as an abstract template or blueprint",
+      "Object as a concrete instance of a class",
+      "Instantiation process",
+      "Instance properties and behaviors",
+      "Simple programming example showing class-to-object relationship"
+    ]
+  },
+  "student_persona": "Grade: Introductory programming students\nFocus Time: 15 minutes\nBackground Knowledge: Has: Basic familiarity with variables and simple programs. Lacks: New to object-oriented programming, classes, objects, and instantiation.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "apply"
+    ],
+    "icap_level": "active"
+  }
+}

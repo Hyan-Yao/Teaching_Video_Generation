@@ -1,0 +1,21 @@
+{
+  "request_id": "modern_physics_001",
+  "course": {
+    "topic": "Modern Physics",
+    "learning_goal": "Introduce quantum mechanics and relativity at a conceptual level, emphasizing how they differ from classical physics.",
+    "key_learning_points": [
+      "Quantum mechanics",
+      "Relativity",
+      "Wave-particle duality",
+      "Historical motivation"
+    ]
+  },
+  "student_persona": "Grade: 2nd-year physics undergraduate\nFocus Time: 25 minutes\nBackground Knowledge: Completed introductory mechanics and electromagnetism.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "analyze"
+    ],
+    "icap_level": "constructive"
+  }
+}

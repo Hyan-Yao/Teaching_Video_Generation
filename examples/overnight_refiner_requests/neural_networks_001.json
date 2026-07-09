@@ -1,0 +1,22 @@
+{
+  "request_id": "neural_networks_001",
+  "course": {
+    "topic": "Neural Networks",
+    "learning_goal": "Introduce the intuition behind neural networks, neurons, layers, activation functions, and training.",
+    "key_learning_points": [
+      "Artificial neurons",
+      "Hidden layers",
+      "Activation functions",
+      "Training",
+      "Inference"
+    ]
+  },
+  "student_persona": "Grade: Senior undergraduate computer science\nFocus Time: 30 minutes\nBackground Knowledge: Comfortable with linear algebra and introductory machine learning.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "analyze"
+    ],
+    "icap_level": "constructive"
+  }
+}

@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from .feedback import outer_plan_refiner, outer_reviewer, plan_refiner, router, 
 from .planner import content_writer, route
 from .providers import get_provider
 from .providers.base import Provider
+from .mpcompat import VideoFileClip
 from .renderers import get_renderer
 from .renderers.base import RenderContext
 from .schema import ContentIssue, LessonPlan, Modality, NarrationAudio, OuterReview, ReviewResult, Segment, VisualAsset, VisualIssue
@@ -397,6 +399,10 @@ def _render_segment(cfg, provider, seg: Segment, audio: NarrationAudio) -> Visua
     for i, modality in enumerate(chain):
         try:
             asset = get_renderer(modality).render(seg, ctx)
+            if modality == Modality.ANIMATION:
+                unhealthy_reason = _animation_asset_unhealthy(asset, audio)
+                if unhealthy_reason:
+                    raise RuntimeError(unhealthy_reason)
             if i > 0:
                 _log(f"   {seg.id}: {seg.modality.value} failed; fell back to {modality.value}")
                 seg.modality = modality
@@ -405,6 +411,53 @@ def _render_segment(cfg, provider, seg: Segment, audio: NarrationAudio) -> Visua
             last_err = e
             _log(f"   {seg.id}: {modality.value} failed: {type(e).__name__}: {e}")
     raise last_err  # all renderers failed for this segment
+
+
+def _animation_asset_unhealthy(asset: VisualAsset, audio: NarrationAudio) -> str | None:
+    """Reject animation MP4s likely to hang or smear during composition/evaluation.
+
+    code2video can sometimes produce an MP4 that opens successfully but contains far
+    fewer readable frames than its reported/needed duration. MoviePy then repeatedly
+    freezes the final valid frame while writing evaluator chunks. For evaluator runs,
+    a static concept image is better than a broken animation clip.
+    """
+    if asset.kind != "video":
+        return "animation renderer did not return a video asset"
+
+    path = Path(asset.path)
+    if not path.is_file() or path.stat().st_size == 0:
+        return f"animation asset missing or empty: {path}"
+
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            clip = VideoFileClip(str(path))
+            try:
+                duration = float(clip.duration or 0.0)
+                if duration <= 0:
+                    return f"animation asset has invalid duration: {path}"
+
+                probe_t = max(0.0, min(duration - 0.05, duration * 0.95))
+                if probe_t > 0:
+                    clip.get_frame(probe_t)
+
+                warning_text = "\n".join(str(w.message) for w in caught)
+                if "bytes wanted but 0 bytes read" in warning_text:
+                    return f"animation asset has unreadable frames: {path}"
+
+                shortfall = float(audio.duration or 0.0) - duration
+                allowed_shortfall = max(2.0, float(audio.duration or 0.0) * 0.20)
+                if shortfall > allowed_shortfall:
+                    return (
+                        "animation asset is much shorter than narration "
+                        f"({duration:.1f}s video vs {audio.duration:.1f}s audio)"
+                    )
+            finally:
+                clip.close()
+    except Exception as e:
+        return f"animation asset failed health check: {type(e).__name__}: {e}"
+
+    return None
 
 
 def _finalize(cfg: Config, draft_path):

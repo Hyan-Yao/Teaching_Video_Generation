@@ -1,0 +1,23 @@
+{
+  "request_id": "tm_mat_qua_002",
+  "course": {
+    "topic": "Quadratic Functions",
+    "learning_goal": "Graph quadratic functions while mapping vertices, axes of symmetry, roots, and key features. Explain how the quadratic formula connects to solving equations and interpreting parabolic geometry.",
+    "key_learning_points": [
+      "Parabolic shape of quadratic functions",
+      "Vertex and axis of symmetry",
+      "Roots or x-intercepts",
+      "Quadratic formula",
+      "Connection between equation form and graph behavior"
+    ]
+  },
+  "student_persona": "Grade: 10th Grade Algebra II\nFocus Time: 15 minutes\nBackground Knowledge: Has: Comfortable graphing linear equations and simplifying algebraic expressions. Lacks: New to quadratic graphs, parabolas, and interpreting roots geometrically.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "apply",
+      "analyze"
+    ],
+    "icap_level": "active"
+  }
+}

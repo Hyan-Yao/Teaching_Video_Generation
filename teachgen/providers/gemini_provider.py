@@ -27,7 +27,17 @@ class GeminiProvider:
             "GeminiProvider.chat: delegate to src.gpt_request.request_gemini_token"
         )
 
-    def chat_json(self, prompt, schema: Type[T], *, system="", max_tokens=4000) -> T:
+    def chat_json(
+        self,
+        prompt,
+        schema: Type[T],
+        *,
+        system="",
+        max_tokens=4000,
+        temperature: float | None = None,
+        seed: int | None = None,
+        model: str | None = None,
+    ) -> T:
         raise NotImplementedError("GeminiProvider.chat_json: wrap request_gemini_token + parse")
 
     def vision(self, prompt, images, *, system="", max_tokens=4000) -> str:

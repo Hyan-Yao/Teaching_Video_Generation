@@ -1,0 +1,22 @@
+{
+  "request_id": "statistical_inference_001",
+  "course": {
+    "topic": "Statistical Inference",
+    "learning_goal": "Explain the intuition behind statistical inference and how samples are used to make conclusions about populations.",
+    "key_learning_points": [
+      "Population vs sample",
+      "Sampling variability",
+      "Confidence",
+      "Hypothesis testing",
+      "Interpretation"
+    ]
+  },
+  "student_persona": "Grade: 3rd-year undergraduate statistics\nFocus Time: 25 minutes\nBackground Knowledge: Has completed introductory probability.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "analyze"
+    ],
+    "icap_level": "constructive"
+  }
+}

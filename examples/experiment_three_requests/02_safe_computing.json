@@ -1,0 +1,22 @@
+{
+  "request_id": "tm_cs_saf_002",
+  "course": {
+    "topic": "Safe Computing",
+    "learning_goal": "Identify common security vulnerabilities including phishing schemes and credential compromise, explain the mechanisms of asymmetric and symmetric cryptographic methods during online data transit, and design a proactive protocol for password safety and data hygiene.",
+    "key_learning_points": [
+      "Phishing taxonomy: spear phishing, deceptive links, and social engineering indicators",
+      "Password entropy and the need for multi-factor authentication",
+      "Encrypted transit and the conceptual difference between HTTP and HTTPS",
+      "Local machine security: firewalls, patch management, and malware scanning"
+    ]
+  },
+  "student_persona": "Grade: 9th Grade General Technology Elective\nFocus Time: 15 minutes\nBackground Knowledge: Has: Regular user of social media, smartphones, and web browsers. Lacks: Completely unaware of network transport protocols, attack vectors, or computational password cracking.",
+  "pedagogy": {
+    "bloom_levels": [
+      "remember",
+      "understand",
+      "analyze"
+    ],
+    "icap_level": "active"
+  }
+}

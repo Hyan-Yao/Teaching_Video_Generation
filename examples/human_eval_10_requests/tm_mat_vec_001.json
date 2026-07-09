@@ -1,0 +1,22 @@
+{
+  "request_id": "tm_mat_vec_001",
+  "course": {
+    "topic": "Vectors",
+    "learning_goal": "Differentiate scalar quantities from directional vector entities in coordinate spaces. Compute vector magnitude, direction, components, and basic vector addition using graphical and algebraic methods.",
+    "key_learning_points": [
+      "Scalar versus vector quantities",
+      "Vector notation and coordinate components",
+      "Magnitude and direction",
+      "Graphical vector addition",
+      "Real-world applications of vectors"
+    ]
+  },
+  "student_persona": "Grade: 11th Grade High School Mathematics\nFocus Time: 15 minutes\nBackground Knowledge: Has: Comfortable with algebra, coordinate planes, and the Pythagorean theorem. Lacks: New to representing quantities with both magnitude and direction.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "apply"
+    ],
+    "icap_level": "active"
+  }
+}

@@ -58,7 +58,11 @@ Rating scale:
 
 Rules:
 - Compare the request's key_learning_points against the plan's objectives and segments.
-- Mentioning a concept in a title is not enough; sufficient coverage requires planned narration, example, explanation, or visual support.
+- For Learning Objective Coverage, narration is the source of instructional truth.
+- Visuals, visual_brief, modality, and rationale can support narration, but they do not replace it.
+- A required concept is not sufficiently covered if it is only named in a title, visual_brief, modality, or rationale.
+- A required concept is also not sufficiently covered if the narration only says it will be explained, demonstrated, explored, or analyzed later.
+- Sufficient coverage requires the narration itself to include an explanation, definition, contrast, example, worked mini-demo, or explicit learner task for the concept.
 - Do not penalize for optional content outside the request scope.
 
 ## Content Accuracy
@@ -219,6 +223,17 @@ Rules:
 - For video-evaluator evidence, revise the plan so the next generated video is less likely to reproduce the observed failure.
 - Preserve strong segments when they already work.
 - Fix weak metrics by editing the plan, not by explaining what you would do.
+- Make the smallest sufficient revision. Do not expand every segment just because one metric is weak.
+- Prefer targeted edits to the specific weak objectives, concepts, or segments named in the evidence.
+- Only rewrite the whole plan, add many new segments, or lengthen most segments if the evidence says the overall lesson structure is wrong.
+- For Learning Objective Coverage repairs, narration is the source of instructional truth.
+- Visuals, visual_brief, modality, and rationale may support the narration, but they cannot carry required content by themselves.
+- If a required concept is weak, add concrete instructional content directly to narration: a definition, contrast, example, worked mini-demo, or explicit learner task.
+- Do not repair weak coverage by only adding promises such as "we will explain", "let's explore", "we'll demonstrate", or "we'll analyze".
+- If you use a phrase like "let's explore" or "we'll demonstrate", the actual explanation or demonstration must immediately follow in the same segment narration.
+- For content-depth repairs, add one concrete explanatory unit where it belongs: a mechanism, worked example, contrast, mini-demonstration, or learner task. Do not add generic filler.
+- Keep unchanged segments unchanged unless their content is directly implicated by the evidence.
+- Avoid increasing total lesson length by more than necessary; targeted depth is better than broad narration inflation.
 - You may rewrite objectives.
 - You may add, remove, split, merge, or reorder segments when needed.
 - You may edit segment title, narration, modality, visual_brief, rationale, target_seconds, and hints.

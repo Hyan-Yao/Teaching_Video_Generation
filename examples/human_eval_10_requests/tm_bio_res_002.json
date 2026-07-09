@@ -1,0 +1,23 @@
+{
+  "request_id": "tm_bio_res_002",
+  "course": {
+    "topic": "Cellular Respiration",
+    "learning_goal": "Trace carbon and energy transformations through glycolysis, the Krebs cycle, and the electron transport chain. Explain how cells convert glucose into ATP through staged metabolic processes.",
+    "key_learning_points": [
+      "Overall purpose of cellular respiration",
+      "Glycolysis",
+      "Krebs cycle or citric acid cycle",
+      "Electron transport chain",
+      "ATP generation from glucose"
+    ]
+  },
+  "student_persona": "Grade: Introductory High School or College Biology\nFocus Time: 15 minutes\nBackground Knowledge: Has: Basic cell biology and awareness that cells need energy. Lacks: New to metabolic pathways and how glucose is transformed into ATP in stages.",
+  "pedagogy": {
+    "bloom_levels": [
+      "remember",
+      "understand",
+      "analyze"
+    ],
+    "icap_level": "constructive"
+  }
+}

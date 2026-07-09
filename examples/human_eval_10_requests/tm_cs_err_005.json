@@ -1,0 +1,23 @@
+{
+  "request_id": "tm_cs_err_005",
+  "course": {
+    "topic": "Identifying and Correcting Errors",
+    "learning_goal": "Differentiate structural compilation errors, runtime failures, and hidden programmatic logical flaws. Teach students to trace program behavior, interpret error feedback, and correct errors systematically.",
+    "key_learning_points": [
+      "Compilation or syntax errors",
+      "Runtime errors and exceptions",
+      "Logic errors that produce incorrect outputs",
+      "Tracing program state step by step",
+      "Systematic debugging and correction process"
+    ]
+  },
+  "student_persona": "Grade: High School introductory programming\nFocus Time: 15 minutes\nBackground Knowledge: Has: Can read and write short programs with variables, conditionals, and simple loops. Lacks: Struggles to interpret error messages and often guesses fixes without tracing logic.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "apply",
+      "analyze"
+    ],
+    "icap_level": "constructive"
+  }
+}

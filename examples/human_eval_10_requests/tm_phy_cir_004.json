@@ -1,0 +1,23 @@
+{
+  "request_id": "tm_phy_cir_004",
+  "course": {
+    "topic": "Circular Motion",
+    "learning_goal": "Explain why uniform circular pathways require constant acceleration even when speed is constant. Connect angular velocity, centripetal acceleration, centripetal force, and real-world circular motion examples.",
+    "key_learning_points": [
+      "Uniform circular motion",
+      "Changing velocity direction despite constant speed",
+      "Centripetal acceleration",
+      "Centripetal force",
+      "Real-world examples of circular motion"
+    ]
+  },
+  "student_persona": "Grade: 11th Grade AP Physics 1 / Physics C preparation\nFocus Time: 15 minutes\nBackground Knowledge: Has: Understands Newton's laws, vectors, and basic acceleration. Lacks: Often thinks acceleration requires a change in speed rather than a change in velocity direction.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "apply",
+      "analyze"
+    ],
+    "icap_level": "constructive"
+  }
+}

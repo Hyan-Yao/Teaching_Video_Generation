@@ -1,0 +1,22 @@
+{
+  "request_id": "genetics_001",
+  "course": {
+    "topic": "Genetics",
+    "learning_goal": "Teach inheritance patterns and connect Mendelian genetics to modern genetic concepts.",
+    "key_learning_points": [
+      "Genes",
+      "Alleles",
+      "Dominant vs recessive",
+      "Punnett squares",
+      "Pedigrees"
+    ]
+  },
+  "student_persona": "Grade: High school AP Biology\nFocus Time: 22 minutes\nBackground Knowledge: Understands DNA and cell division.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "apply"
+    ],
+    "icap_level": "constructive"
+  }
+}

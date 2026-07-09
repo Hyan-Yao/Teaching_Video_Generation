@@ -4,6 +4,11 @@ from teachgen.feedback.plan_prompts import PLAN_REFINER_SYSTEM, PLAN_REFINER_TEM
 from teachgen.schema import LessonPlan, PlanEvaluationResult, TeachingRequest
 
 
+def _refinement_model(provider) -> str | None:
+    models = getattr(getattr(provider, "cfg", None), "models", None)
+    return getattr(models, "refinement_text", None)
+
+
 def refine_plan(
     provider,
     request: TeachingRequest,
@@ -23,4 +28,5 @@ def refine_plan(
         max_tokens=6000,
         temperature=0,
         seed=12345,
+        model=_refinement_model(provider),
     )

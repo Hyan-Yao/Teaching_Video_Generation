@@ -36,6 +36,7 @@ class ConceptImageRenderer:
             ci.build_user_brief(seg.visual_brief, ctx.cfg.audience, _STYLE),
             system=ci.PROMPT_SYSTEM,
             max_tokens=800,
+            model=ctx.cfg.models.visual_text,
         )
         # Step 2: render it. concept_image targets 3:2 landscape for slide framing.
         png = ctx.provider.image(image_prompt, size="1536x1024", quality="high")

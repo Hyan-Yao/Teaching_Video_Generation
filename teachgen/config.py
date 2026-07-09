@@ -16,8 +16,10 @@ from .schema import TeachingRequest
 class ModelConfig:
     """Which concrete models the default OpenAI provider should use."""
 
-    text: str = "gpt-4o"            # planning, content writing, routing
-    vision: str = "gpt-4o"          # MLLM reviewer (reads sampled video frames)
+    text: str = "gpt-5"             # planning, content writing, routing
+    refinement_text: str = "gpt-5"  # plan/repair/refinement LLM calls only
+    vision: str = "gpt-5"           # MLLM reviewer (reads sampled video frames)
+    visual_text: str = "gpt-4o"     # slide/image prompts + code2video animation code
     tts: str = "gpt-4o-mini-tts"    # narration synthesis
     transcribe: str = "whisper-1"   # word-level timestamps for A/V alignment
     image: str = "gpt-image-2"      # concept_image renderer

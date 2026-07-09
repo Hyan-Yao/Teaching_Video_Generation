@@ -1,0 +1,21 @@
+{
+  "request_id": "circular_motion_001",
+  "course": {
+    "topic": "Circular Motion",
+    "learning_goal": "Explain uniform circular motion and derive the relationship between centripetal acceleration, velocity, and radius.",
+    "key_learning_points": [
+      "Angular velocity",
+      "Centripetal force",
+      "Centripetal acceleration",
+      "Real-world examples"
+    ]
+  },
+  "student_persona": "Grade: AP Physics C\nFocus Time: 20 minutes\nBackground Knowledge: Understands Newton's Laws and vectors.",
+  "pedagogy": {
+    "bloom_levels": [
+      "understand",
+      "apply"
+    ],
+    "icap_level": "active"
+  }
+}
