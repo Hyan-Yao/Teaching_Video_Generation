@@ -2,8 +2,8 @@
 
 Handles both visual kinds uniformly:
   - image  -> ImageClip stretched to the narration duration (slide / concept image)
-  - video  -> animation clip; if shorter than narration we freeze the last frame to
-              fill, if longer we let it run and pad the audio with trailing silence.
+  - video  -> animation clip; speed-fit to narration duration so visual steps stay
+              aligned with spoken audio.
 
 This is the same moviepy compositing approach TeachingMonster uses, generalized to a
 mixed list of static and dynamic segments. Cursor overlays (from code2video / TM) can
@@ -49,9 +49,8 @@ def assemble(
             visual = with_audio(visual, audio)
         else:  # video (animation)
             visual = resized(VideoFileClip(v.path), size)
-            if visual.duration < dur:
-                visual = _freeze_to(visual, dur)
-            audio = _fit_audio(audio, visual.duration)
+            visual = _fit_video_to_duration(visual, dur)
+            audio = _fit_audio(audio, dur)
             visual = with_audio(visual, audio)
 
         clips.append(visual)
@@ -87,6 +86,22 @@ def _freeze_to(clip, target: float):
             return freeze(clip, t="end", total_duration=target)
         except Exception:
             return with_duration(clip, target)  # last resort: let moviepy clamp/loop
+
+
+def _fit_video_to_duration(clip, target: float):
+    """Speed-fit an animation to narration duration, falling back to freeze/trim."""
+    duration = float(getattr(clip, "duration", 0.0) or 0.0)
+    if duration <= 0 or target <= 0:
+        return clip
+    if abs(duration - target) <= 0.25:
+        return with_duration(clip, target)
+
+    try:
+        return clip.with_speed_scaled(final_duration=target)
+    except Exception:
+        if duration < target:
+            return _freeze_to(clip, target)
+        return subclipped(clip, 0, target)
 
 
 def _fit_audio(audio, target: float):

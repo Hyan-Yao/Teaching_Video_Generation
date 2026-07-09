@@ -784,7 +784,11 @@ class GridCodeModifier:
 
         modifications: List[Dict[str, Any]] = []
         line_pat = re.compile(r"\bline\s+(\d+)\b", re.IGNORECASE)
-        call_pat = re.compile(r"self\.(?:place_at_grid|place_in_area)\([^\n\r]*?\)")
+        call_pat = re.compile(
+            r"self\.(?:place_at_grid|place_in_area)\([^\n\r]*?\)"
+            r"|self\.play\(\s*FadeOut\([^\n\r]*?\)(?:\s*,\s*FadeOut\([^\n\r]*?\))*\s*\)"
+            r"|self\.remove\([^\n\r]*?\)"
+        )
 
         for item in feedback_list:
             if not isinstance(item, str):
@@ -803,4 +807,6 @@ class GridCodeModifier:
                 continue
             new_code = m_call.group(0)
             modifications.append({"line_number": line_number, "new_code": new_code})
+        if not modifications and feedback_list:
+            raise ValueError("No grid/fade/remove modifications could be parsed from feedback")
         return self.apply_grid_modifications(modifications)

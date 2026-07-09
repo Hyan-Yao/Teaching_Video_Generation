@@ -51,6 +51,10 @@ def apply_with_cache_hints(
             dirty_visual.add(seg.id)
         elif c.fix_action == "re_render":
             seg.visual_brief = _rewrite_brief(provider, plan, seg, c)
+            if seg.modality == Modality.ANIMATION:
+                seg.hints["animation_critic_repair_attempts"] = (
+                    int(seg.hints.get("animation_critic_repair_attempts", 0)) + 1
+                )
             dirty_visual.add(seg.id)
         elif c.fix_action == "adjust_timing":
             # Timing-only: nudge the target and let the compositor refit. Cheap path —

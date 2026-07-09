@@ -66,9 +66,11 @@ Available router actions:
 - adjust_timing: pacing, duration, or audio-visual synchronization is wrong.
 
 For broken, messy, unreadable, cramped, mistimed, or narration-mismatched
-animations, prefer change_modality instead of asking for a more complex
-animation. The next modality will be concept_image, and render-time fallback can
-still degrade to slide if needed.
+animations, prefer re_render when the animation approach is still instructionally
+appropriate. The animation renderer may run a visual critic/grid-repair loop.
+Use change_modality only when the visual approach is fundamentally wrong, the
+animation would need to become more complex, or a prior animation repair already
+failed.
 
 For scores 1-2, usually create repair candidates unless the evidence is not
 actionable. For score 3, be selective: create a candidate only for clear,
@@ -95,7 +97,7 @@ def adapt_evaluation_to_review(
             json.dumps([interval.model_dump() for interval in timeline], indent=2),
             encoding="utf-8",
         )
-    _force_animation_visual_fallbacks(repair_plan, timeline, plan)
+    _apply_animation_visual_repair_policy(provider, repair_plan, timeline, plan)
     if debug_dir is not None:
         (debug_dir / "repair_plan.json").write_text(
             repair_plan.model_dump_json(indent=2), encoding="utf-8"
@@ -388,8 +390,10 @@ def _plan_repairs(
         "Do not require preserving every visual label, table cell, code snippet, "
         "filename, email body, or bullet from the old visual brief unless it is "
         "central to the target segment's narration. For major/blocker animation "
-        "rendering defects, prefer change_modality over re_render so the segment "
-        "can be rebuilt as a simpler concept image."
+        "rendering defects, prefer re_render when the same animation approach is "
+        "still appropriate, so the animation critic/grid-repair loop can try to "
+        "fix the rendered segment. Prefer change_modality only when the animation "
+        "approach itself is wrong or too complex."
     )
     repair_plan = provider.chat_json(
         prompt,
@@ -408,12 +412,13 @@ def _plan_repairs(
     return repair_plan
 
 
-def _force_animation_visual_fallbacks(
+def _apply_animation_visual_repair_policy(
+    provider: Provider,
     repair_plan: _RepairPlan,
     timeline: list[_SegmentInterval],
     plan: LessonPlan,
 ) -> None:
-    """Force major/blocker visual repairs on animations to change modality."""
+    """Give bad animations one critic-loop repair before falling back."""
     by_id = {segment.id: segment for segment in plan.segments}
     visual_metrics = {
         "visual quality",
@@ -422,6 +427,9 @@ def _force_animation_visual_fallbacks(
         "multimedia_learning_design",
     }
     fallback_severities = {"major", "blocker"}
+    cfg = getattr(provider, "cfg", None)
+    policy = getattr(cfg, "animation_repair_policy", "critic_first")
+    critic_enabled = getattr(cfg, "animation_mode", "basic") == "code2video_critic"
 
     for candidate in repair_plan.candidates:
         if candidate.source_metric.strip().casefold() not in visual_metrics:
@@ -434,12 +442,31 @@ def _force_animation_visual_fallbacks(
         if segment is None or segment.modality != Modality.ANIMATION:
             continue
 
+        repair_attempts = int(segment.hints.get("animation_critic_repair_attempts", 0))
+        should_try_critic = (
+            policy == "critic_first"
+            and critic_enabled
+            and repair_attempts < 1
+        )
+
+        if should_try_critic:
+            if candidate.fix_action != "re_render":
+                candidate.detail = (
+                    f"{candidate.detail} "
+                    "Deterministic policy override: major/blocker visual issue on "
+                    "an animation segment, so retry animation once with the "
+                    "Code2Video visual critic/grid repair loop before falling back "
+                    "to a static modality."
+                ).strip()
+            candidate.fix_action = "re_render"
+            continue
+
         if candidate.fix_action != "change_modality":
             candidate.detail = (
                 f"{candidate.detail} "
                 "Deterministic policy override: major/blocker visual issue on "
-                "an animation segment, so fallback to concept_image instead of "
-                "retrying animation."
+                "an animation segment after critic repair was unavailable or already "
+                "attempted, so fallback to concept_image instead of retrying animation."
             ).strip()
         candidate.fix_action = "change_modality"
 

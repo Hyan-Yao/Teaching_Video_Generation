@@ -13,17 +13,17 @@ from .. import concept_image as ci  # the standalone helper, now a teachgen modu
 
 
 _STYLE = (
-    "visually stunning educational infographic in a clean, modern academic style; "
+    "clean, uncluttered educational illustration in a modern academic style; "
+    "one central visual idea with generous whitespace, not a dense poster; "
     "soft neutral background (cream or light beige); "
-    "elegant serif typography for section titles, minimalist sans-serif for body text; "
-    "layout organized into clearly separated numbered sections (1, 2, 3, 4), each with a "
-    "concise heading and short explanation; subtle dividing lines and balanced spacing; "
-    "mathematical notation, symbols, and step-by-step visual diagrams (grids, arrows, "
-    "highlights, boxed elements) to illustrate concepts clearly; "
+    "use at most 3-5 short labels total, each 1-3 words, with no paragraphs, "
+    "no long bullet lists, no tiny captions, and no crowded text blocks; "
+    "show only the most important objects needed to support the narration; "
+    "prefer one simple diagram, comparison, metaphor, or left-to-right flow; "
+    "avoid numbered multi-section layouts unless the concept absolutely requires a sequence; "
     "limited color palette: teal accents, gold highlights, dark gray text on cream ground; "
-    "arrows, dotted lines, or highlighted boxes to guide the viewer through the logic; "
-    "symmetry, alignment, and a polished 'textbook meets modern design' aesthetic; "
-    "premium educational poster — minimal, elegant, highly readable, intellectually satisfying"
+    "large readable labels, clear spacing between objects, simple arrows only when useful; "
+    "minimal, elegant, slide-ready, highly readable at a glance"
 )
 
 

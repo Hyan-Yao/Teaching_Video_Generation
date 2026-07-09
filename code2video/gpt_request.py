@@ -89,13 +89,13 @@ def request_gpt5_video_img(
 ):
     """
     Evaluate a rendered video against a reference grid image.
-    Extracts 3 frames (10 / 50 / 90 %) and sends them together with the reference
+    Extracts 5 frames (10 / 30 / 50 / 70 / 90 %) and sends them together with the reference
     image to request_vision.
     """
     cap = cv2.VideoCapture(video_path)
     total = max(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), 1)
     frames_b64 = []
-    for frac in (0.1, 0.5, 0.9):
+    for frac in (0.1, 0.3, 0.5, 0.7, 0.9):
         cap.set(cv2.CAP_PROP_POS_FRAMES, int(total * frac))
         ok, frame = cap.read()
         if ok:

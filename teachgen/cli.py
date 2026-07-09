@@ -33,6 +33,10 @@ def main() -> None:
     )
     ap.add_argument("--vision-model", help="override the vision/reviewer model")
     ap.add_argument("--visual-text-model", help="override the visual helper/code animation model")
+    ap.add_argument(
+        "--animation-code-model",
+        help="override the OpenRouter model used for Code2Video Manim code/refinement",
+    )
     ap.add_argument("--tts-model", help="override the TTS model")
     ap.add_argument("--image-model", help="override the image model")
     ap.add_argument(
@@ -71,6 +75,24 @@ def main() -> None:
     )
     ap.add_argument("--no-parallel", action="store_true")
     ap.add_argument("--max-workers", type=int, default=6)
+    ap.add_argument(
+        "--animation-mode",
+        choices=["basic", "code2video_critic"],
+        default="basic",
+        help="basic uses the current one-pass animation path; code2video_critic enables Code2Video's grid visual critic loop",
+    )
+    ap.add_argument(
+        "--animation-feedback-rounds",
+        type=int,
+        default=1,
+        help="number of Code2Video visual critic repair rounds per animation segment",
+    )
+    ap.add_argument(
+        "--animation-repair-policy",
+        choices=["critic_first", "fallback_first"],
+        default="critic_first",
+        help="critic_first retries bad animations with the Code2Video critic once; fallback_first immediately changes bad animations to concept_image",
+    )
     ap.add_argument("--run-dir", default="runs")
     ap.add_argument(
         "--plan-only",
@@ -96,6 +118,9 @@ def main() -> None:
         evaluator_chunk_seconds=args.eval_chunk_seconds,
         parallel=not args.no_parallel,
         max_workers=args.max_workers,
+        animation_mode=args.animation_mode,
+        animation_feedback_rounds=args.animation_feedback_rounds,
+        animation_repair_policy=args.animation_repair_policy,
         run_dir=args.run_dir,
     )
     if args.text_model:
@@ -106,6 +131,8 @@ def main() -> None:
         cfg.models.vision = args.vision_model
     if args.visual_text_model:
         cfg.models.visual_text = args.visual_text_model
+    if args.animation_code_model:
+        cfg.models.animation_code = args.animation_code_model
     if args.tts_model:
         cfg.models.tts = args.tts_model
     if args.image_model:

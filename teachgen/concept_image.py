@@ -74,6 +74,10 @@ PROMPT_SYSTEM = textwrap.dedent("""\
       - Concrete, simple iconography/metaphors that make the idea intuitive.
       - Readable, correctly-spelled text labels for each element (keep labels
         SHORT — 1-3 words — and few, since image models mangle long text).
+      - A strong anti-clutter direction: one central visual idea, generous
+        whitespace, at most 3-5 labels total, no paragraphs, no long bullet
+        lists, no tiny captions, no dense multi-panel poster, and no decorative
+        extras that do not directly support the narration.
       - A cohesive, modern style: flat vector / clean infographic, generous
         whitespace, a restrained palette (name 2-3 hex-like colours), soft
         shadows, rounded shapes.

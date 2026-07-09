@@ -20,6 +20,7 @@ class ModelConfig:
     refinement_text: str = "gpt-5"  # plan/repair/refinement LLM calls only
     vision: str = "gpt-5"           # MLLM reviewer (reads sampled video frames)
     visual_text: str = "gpt-4o"     # slide/image prompts + code2video animation code
+    animation_code: str = "~anthropic/claude-opus-latest"  # Code2Video Manim code via OpenRouter
     tts: str = "gpt-4o-mini-tts"    # narration synthesis
     transcribe: str = "whisper-1"   # word-level timestamps for A/V alignment
     image: str = "gpt-image-2"      # concept_image renderer
@@ -52,6 +53,9 @@ class Config:
     # Execution
     parallel: bool = True
     max_workers: int = 6
+    animation_mode: str = "basic"  # "basic" | "code2video_critic"
+    animation_feedback_rounds: int = 1
+    animation_repair_policy: str = "critic_first"  # "critic_first" | "fallback_first"
 
     # Paths
     run_dir: Path = Path("runs")

@@ -24,6 +24,7 @@ class Section:
     title: str
     lecture_lines: List[str]
     animations: List[str]
+    target_seconds: Optional[float] = None
 
 
 @dataclass

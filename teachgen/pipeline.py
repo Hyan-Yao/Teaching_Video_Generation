@@ -366,7 +366,7 @@ def _produce_assets(cfg, provider, plan, dirty, audio_cache, visual_cache):
 
     def work(seg: Segment):
         audio = narrator.narrate(provider, seg, cfg.audio_dir)
-        visual = _render_segment(cfg, provider, seg, audio)
+        visual = _render_segment(cfg, provider, plan, seg, audio)
         return seg.id, audio, visual
 
     if cfg.parallel:
@@ -380,7 +380,7 @@ def _produce_assets(cfg, provider, plan, dirty, audio_cache, visual_cache):
         visual_cache[sid] = visual
 
 
-def _render_segment(cfg, provider, seg: Segment, audio: NarrationAudio) -> VisualAsset:
+def _render_segment(cfg, provider, plan: LessonPlan, seg: Segment, audio: NarrationAudio) -> VisualAsset:
     """Dispatch to the planned renderer; degrade gracefully on failure.
 
     Fallback order is planned -> concept_image -> slide. concept_image comes first so
@@ -388,7 +388,11 @@ def _render_segment(cfg, provider, seg: Segment, audio: NarrationAudio) -> Visua
     (slides are reserved for the final summary). Slide is the last-resort emergency.
     """
     ctx = RenderContext(
-        cfg=cfg, provider=provider, out_dir=cfg.assets_dir, audio_seconds=audio.duration
+        cfg=cfg,
+        provider=provider,
+        out_dir=cfg.assets_dir,
+        audio_seconds=audio.duration,
+        plan=plan,
     )
     chain = [seg.modality]
     for m in (Modality.CONCEPT_IMAGE, Modality.SLIDE):

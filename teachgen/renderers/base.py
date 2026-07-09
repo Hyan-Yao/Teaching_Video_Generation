@@ -8,7 +8,7 @@ from typing import Protocol, runtime_checkable
 
 from ..config import Config
 from ..providers.base import Provider
-from ..schema import Modality, Segment, VisualAsset
+from ..schema import LessonPlan, Modality, Segment, VisualAsset
 
 
 @dataclass
@@ -19,6 +19,7 @@ class RenderContext:
     provider: Provider
     out_dir: Path                      # where to write this segment's visual
     audio_seconds: float | None = None  # narration duration, if already known
+    plan: LessonPlan | None = None
 
 
 @runtime_checkable
