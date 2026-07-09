@@ -29,13 +29,13 @@ level as the primary scoring target when available.
 | Category | Metric | Question | 1 Poor | 2 Weak | 3 Adequate | 4 Strong | 5 Excellent |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Content | Learning Objective Coverage | Did the lesson cover all stated or inferred learning objectives and key concepts within scope? | Most objectives are not addressed, major required content is absent, or the lesson is drastically off topic. | Several major objectives or key concepts are missing or only briefly mentioned. | Primary objectives are addressed, but important concepts, supporting knowledge, or required content are omitted. | Most objectives and key concepts are addressed, with only minor supporting details omitted. | All objectives, key concepts, and essential knowledge are explicitly covered at the expected depth. |
-| Content | Content Accuracy | Is the lesson content correct? | Pervasive factual inaccuracies or fundamental misunderstandings. | Major factual errors or multiple important misconceptions. | Mostly accurate, but several inaccuracies, omissions, or misleading simplifications may cause confusion. | Overwhelmingly accurate, with only minor imprecision or harmless oversimplification. | Factually accurate throughout, with no meaningful ambiguity, misleading statement, or incorrect explanation. |
+| Content | Content Accuracy | Is the lesson content correct? | Pervasive factual inaccuracies or fundamental misunderstandings. | Major factual errors or multiple important misconceptions. | Mostly accurate, but several inaccuracies, omissions, or misleading simplifications may cause confusion. | Overwhelmingly accurate, but includes a minor ambiguity, imprecise analogy, omission, or simplification that could cause the target learner to misunderstand something. | Factually accurate throughout for the target audience, with no significant errors or misleading explanations. Harmless simplification is allowed when appropriate for the audience and scope. |
 | Presentation | Visual Quality | Are visuals readable, clear, and technically correct? | Visuals are frequently unreadable, broken, missing, or technically incorrect, making critical content inaccessible. | Multiple important visual elements are difficult to read, interpret, or trust because of clutter, formatting, low resolution, or errors. | Visuals are generally usable but contain noticeable readability, formatting, clutter, or rendering issues that sometimes hinder understanding. | Visuals are clear and technically correct, with only minor issues that do not meaningfully affect understanding. | All instructional visuals are consistently clear, readable, properly rendered, and technically correct. |
 | Presentation | Multimedia Learning Design | Do visuals align with narration and meaningfully support learning? | Visuals consistently distract from, conflict with, or fail to support narration; important concepts lack needed visual support. | Visuals frequently fail to support explained concepts, are poorly timed or decorative, or miss several major visual explanation opportunities. | Some visuals support learning, while others are redundant, loosely connected, generic, or provide limited instructional value. | Visuals generally align with narration and support most concepts, with only minor missed opportunities. | Visuals consistently align with narration, meaningfully improve understanding, and avoid unnecessary or distracting elements. |
-| Presentation | Logic | Does the lesson present concepts in a coherent instructional order, with enough connective explanation for the learner to follow? | The lesson lacks coherent flow; concepts are disconnected and transitions are confusing or absent. | The lesson frequently shifts between concepts without clear transitions or presents ideas in a confusing order. | The lesson is understandable overall but contains several abrupt transitions, weak connections, or organizational issues that noticeably hurt comprehension. | The lesson is generally well organized and easy to follow, with only minor sequencing or mechanically stitched transition weaknesses. | Concepts follow a clear progression, build naturally, and use smooth transitions throughout. |
-| Pedagogy | Learning Adaptation | Is the lesson tailored to the target learner's background, level, and learning needs? | The lesson is fundamentally misaligned with the target learner and would be difficult or impossible to follow. | The lesson frequently assumes inappropriate prior knowledge, uses unsuitable terminology, or progresses at an unsuitable pace. | The lesson is partially adapted, but some explanations, pacing, or prerequisite assumptions create unnecessary difficulty. | The lesson is generally well adapted, with only minor mismatches in pacing, terminology, examples, or prerequisite assumptions. | Difficulty, terminology, pacing, examples, and explanations are consistently well matched to the target learner. |
-| Pedagogy | Bloom Alignment | Does the video support the intended Bloom cognitive level? | The video never supports the intended cognitive outcome. | The video primarily operates at cognitive levels different from the intended level, with limited alignment. | The video partially supports the intended level, but substantial portions operate at different levels. | The video generally supports the intended level, with only minor portions above or below it. | The intended cognitive level is supported repeatedly and clearly across the relevant instructional experience. |
-| Pedagogy | ICAP Alignment | Does the video support the expected level of learner engagement? | The observed engagement never matches the expected ICAP level. | The video is primarily centered on engagement levels different from the expected level, with limited alignment. | Some segments support the expected level, but substantial portions operate at different engagement levels. | The video generally supports the expected engagement level, with only minor mismatches. | The expected engagement level is supported repeatedly and clearly throughout most of the instructional experience. |
+| Presentation | Logic | Does the lesson present concepts in a coherent instructional order, with enough connective explanation for the learner to follow? | The lesson lacks coherent flow; concepts are disconnected and transitions are confusing or absent. | The lesson frequently shifts between concepts without clear transitions or presents ideas in a confusing order. | The lesson is understandable overall but contains several abrupt transitions, weak connections, or organizational issues that noticeably hurt comprehension. | The lesson is generally well organized and easy to follow, with only minor sequencing or transition weaknesses that slightly weaken flow. | Concepts follow a clear progression, build naturally, and are easy for the target learner to follow. Minor mechanical transitions are acceptable when they do not create confusion. |
+| Pedagogy | Learning Adaptation | Is the lesson tailored to the target learner's background, level, and learning needs? | The lesson is fundamentally misaligned with the target learner and would be difficult or impossible to follow. | The lesson frequently assumes inappropriate prior knowledge, uses unsuitable terminology, or progresses at an unsuitable pace. | The lesson is partially adapted, but some explanations, pacing, or prerequisite assumptions create unnecessary difficulty. | The lesson is generally well adapted, with only minor mismatches in pacing, terminology, examples, or prerequisite assumptions. | Difficulty, terminology, pacing, examples, and explanations are well matched to the target learner, with no mismatch that meaningfully hinders that learner. |
+| Pedagogy | Bloom Alignment | Does the video support the intended Bloom cognitive level? | The video never supports the intended cognitive outcome. | The video primarily operates at cognitive levels different from the intended level, with limited alignment. | The video partially supports the intended level, but substantial portions operate at different levels. | The video generally supports the intended level, with only minor portions above or below it. | The intended cognitive level is clearly and meaningfully supported at the moments where that level is relevant. Not every segment must operate at the highest intended level. |
+| Pedagogy | ICAP Alignment | Does the video support the expected level of learner engagement? | The observed engagement never matches the expected ICAP level. | The video is primarily centered on engagement levels different from the expected level, with limited alignment. | Some segments support the expected level, but substantial portions operate at different engagement levels. | The video generally supports the expected engagement level, with only minor mismatches. | The expected engagement level is supported multiple times at meaningful instructional moments. Engagement does not need to be continuous in every segment. |
 
 ## Metric-Specific Caps
 
@@ -57,6 +57,9 @@ higher than the listed value.
   target learner.
 - Cap at 3 if a factual issue, visual, or narration implies an incorrect
   relationship, process, or conclusion.
+- Do not cap at 4 for harmless simplification, omitted advanced caveats, or
+  missing technical depth when those details are outside the stated scope,
+  Bloom level, duration, or student persona.
 - Do not give 5 only because no errors were noticed; there must be affirmative
   evidence that important claims are correct.
 
@@ -81,8 +84,9 @@ higher than the listed value.
 
 ### Logic
 
-- Cap at 4 if transitions are sometimes abrupt or mechanically stitched, but the
-  concept sequence is still easy to follow.
+- Do not cap at 4 merely because transitions are mechanically stitched or
+  slide-to-slide movement is abrupt. Cap at 4 only when those transitions
+  slightly weaken conceptual flow for the target learner.
 - Cap at 3 if abrupt transitions, weak connections, missing bridge explanations,
   prerequisite shifts, or overload noticeably hurt comprehension.
 - Cap at 2 if the lesson frequently shifts between concepts in a confusing
@@ -91,22 +95,26 @@ higher than the listed value.
 ### Learning Adaptation
 
 - Cap at 4 if pacing, terminology, examples, prerequisite assumptions, or
-  explanation depth are only mostly appropriate rather than consistently matched.
+  explanation depth slightly weaken accessibility for the target learner.
 - Cap at 3 if the video assumes knowledge not present in the target learner
   profile and does not scaffold it.
+- Do not penalize for missing extra detail, modalities, or checks for
+  understanding unless their absence creates a mismatch with the target
+  learner's needs.
 - Do not penalize for learners outside the provided or inferred target audience.
 
 ### Bloom Alignment
 
-- Cap at 4 if support for the intended Bloom level is present but brief,
-  optional, uneven, or concentrated in one small moment.
+- Cap at 4 if support for the intended Bloom level is too brief, optional,
+  uneven, or isolated to support the stated objective.
 - Cap at 3 if most of the lesson operates below the intended Bloom level.
 - Announced cognitive goals do not count unless the video demonstrates the
   cognitive action or asks the learner to perform it.
 
 ### ICAP Alignment
 
-- Cap at 4 if engagement prompts are brief, optional, or not sustained.
+- Cap at 4 if engagement prompts are brief, optional, isolated, or too weak to
+  support the expected engagement level.
 - Cap at 3 if learners mostly watch or listen while the expected level is Active,
   Constructive, or Interactive.
 - Rhetorical questions, narrator self-questions, and transitions do not count as

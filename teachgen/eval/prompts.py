@@ -349,10 +349,12 @@ Rating scale:
 - 2 Weak: Major factual errors or multiple important misconceptions.
 - 3 Adequate: Mostly accurate, but several inaccuracies, omissions, or misleading
   simplifications may cause confusion.
-- 4 Strong: Overwhelmingly accurate, with only minor imprecision or harmless
-  oversimplification.
+- 4 Strong: Overwhelmingly accurate, but includes a minor ambiguity, imprecise
+  analogy, omission, or simplification that could cause a target learner to
+  misunderstand something.
 - 5 Excellent: Factually accurate throughout, with no significant errors or
-  misleading explanations.
+  misleading explanations. Harmless simplification is allowed when it is
+  appropriate for the target audience and does not distort the concept.
 
 ## Grading Rules
 
@@ -403,9 +405,16 @@ Rating scale:
 - Distinguish confirmed factual errors from possible accuracy concerns.
 - A high Content Accuracy score requires affirmative evidence that important
   claims are correct. Absence of flagged accuracy issues alone is insufficient.
-- Do not award Content Accuracy = 5 if there is any meaningful ambiguity,
+- Do not penalize Content Accuracy for omitting advanced caveats, edge cases,
+  technical depth, or graduate-level detail when those details are outside the
+  stated scope, Bloom level, duration, or student persona.
+- Content Accuracy = 5 is allowed when the lesson is accurate for the target
+  audience and any simplifications are harmless, pedagogically appropriate, and
+  do not distort the concept.
+- Do not award Content Accuracy = 5 if there is a meaningful ambiguity,
   misleading simplification, possible misconception, or visual/narration
-  mismatch that could reasonably confuse the target learner.
+  mismatch that could reasonably cause the target learner to misunderstand the
+  concept.
 - If a factual issue is possible but not confirmed and does not change the main
   meaning, Content Accuracy should usually be 4 rather than 5.
 - If visual or narration evidence implies an incorrect relationship, process, or
@@ -479,16 +488,18 @@ Rating scale:
 - 4 Strong: The lesson is generally well organized and easy to follow, with
   only minor sequencing or transition weaknesses.
 - 5 Excellent: Concepts follow a clear, coherent progression, build naturally,
-  and use smooth transitions throughout.
+  and are easy for the target learner to follow. Minor mechanical transitions
+  are acceptable when they do not create confusion or weaken comprehension.
 
 ## Grading Rules
 
 - Score only the three assigned metrics.
 - Return metric names exactly as written above.
-- Score 5 only when the extracted evidence shows excellent performance with no
-  meaningful weakness for that metric.
-- Score 4 when performance is strong but there is any minor weakness, omission,
-  artifact, unclear moment, missed opportunity, or conflicting evidence.
+- Score 5 when the extracted evidence shows excellent performance for the
+  target audience with no weakness that meaningfully harms that metric.
+- Score 4 when performance is strong but a weakness, artifact, unclear moment,
+  missed opportunity, or conflicting evidence slightly weakens the target
+  learner's experience.
 - If uncertain between 4 and 5, choose 4.
 - If evidence is mixed, choose the lower score that reflects the weakness.
 - Do not assign 5 from general positive language alone. A 5 requires specific
@@ -512,8 +523,9 @@ Rating scale:
   most 3.
 - Judge Logic from sequencing, conceptual connections, transitions, and
   cognitive flow across the complete lecture.
-- Logic should be at most 4 if transitions are sometimes abrupt or mechanically
-  stitched, but the concept sequence is still easy to follow.
+- Do not cap Logic at 4 merely because transitions are mechanically stitched or
+  slide-to-slide movement is abrupt. Cap Logic at 4 only when those transitions
+  slightly weaken conceptual flow for the target learner.
 - Logic should be at most 3 if abrupt transitions, weak connections, missing
   bridge explanations, prerequisite shifts, or overload noticeably hurt
   comprehension.
@@ -559,7 +571,8 @@ Rating scale:
 - 4 Strong: The lesson is generally well adapted, with only minor mismatches in
   pacing, terminology, examples, or prerequisite assumptions.
 - 5 Excellent: Difficulty, terminology, pacing, examples, and explanations are
-  consistently and exceptionally well matched to the learner's needs.
+  well matched to the learner's needs, with no mismatch that would meaningfully
+  hinder that target learner.
 
 ## Bloom Alignment
 
@@ -574,8 +587,9 @@ Rating scale:
   portions operate at different levels.
 - 4 Strong: The lecture generally supports the intended level, with only minor
   portions above or below it.
-- 5 Excellent: The lecture consistently and appropriately supports the intended
-  cognitive outcome throughout.
+- 5 Excellent: The lecture clearly and meaningfully supports the intended
+  cognitive outcome at the moments where that level is relevant. It does not
+  need every segment to operate at the highest intended Bloom level.
 
 ## ICAP Alignment
 
@@ -591,17 +605,19 @@ Rating scale:
   substantial portions operate at different levels.
 - 4 Strong: The lecture generally supports the expected engagement level, with
   only minor mismatches.
-- 5 Excellent: The lecture consistently supports the expected engagement level
-  throughout most of the instructional experience.
+- 5 Excellent: The lecture supports the expected engagement level multiple
+  times at meaningful instructional moments. Engagement does not need to be
+  continuous in every segment.
 
 ## Grading Rules
 
 - Score only the three assigned metrics.
 - Return metric names exactly as written above.
-- Score 5 only when the extracted evidence shows excellent performance with no
-  meaningful weakness for that metric.
-- Score 4 when performance is strong but there is any minor weakness, mismatch,
-  brief support, unsupported opportunity, or conflicting evidence.
+- Score 5 when the extracted evidence shows excellent performance for the
+  target audience with no weakness that meaningfully harms that metric.
+- Score 4 when performance is strong but a weakness, mismatch, brief support,
+  unsupported opportunity, or conflicting evidence slightly weakens the target
+  learner's experience.
 - If uncertain between 4 and 5, choose 4.
 - If evidence is mixed, choose the lower score that reflects the weakness.
 - Do not assign 5 from general positive language alone. A 5 requires specific
@@ -623,9 +639,9 @@ Rating scale:
 - If the inferred target learner already has some prerequisite knowledge, do
   not penalize missing basic prerequisite instruction unless the missing review
   creates confusion for that target learner.
-- Missing checks for understanding or extra modalities should not strongly lower
-  Learning Adaptation unless they create a clear mismatch with the inferred or
-  provided learner needs.
+- Missing checks for understanding, extra modalities, or visual variety should
+  not lower Learning Adaptation unless they create a clear mismatch with the
+  inferred or provided learner needs.
 - Missing visuals, diagrams, slide design choices, or other presentation
   features should not count against Learning Adaptation unless the target
   learner profile specifically indicates visual-support needs or the concept is
@@ -633,9 +649,13 @@ Rating scale:
 - Do not assume that using a relatable example alone proves strong adaptation.
   Consider prerequisite assumptions, terminology, pacing, explanation depth,
   and scaffolding together.
-- Learning Adaptation cannot be 5 if pacing, terminology, examples, prerequisite
-  assumptions, or explanation depth are only mostly appropriate rather than
-  consistently well matched to the target learner.
+- Learning Adaptation can be 5 when pacing, terminology, examples,
+  prerequisite assumptions, and explanation depth are well matched to the target
+  learner. Do not require unnecessary extra detail or modalities when the
+  current treatment is sufficient for that learner and scope.
+- Learning Adaptation should be 4 when pacing, terminology, examples,
+  prerequisite assumptions, or explanation depth slightly weaken accessibility
+  for the target learner.
 - If the lesson assumes knowledge not clearly present in the target learner
   profile and does not scaffold it, Learning Adaptation should be at most 4, or
   at most 3 if understanding is hindered.
@@ -645,10 +665,13 @@ Rating scale:
   LectureInference.intended_bloom_level as the target.
 - Announced cognitive goals do not count as supported Bloom evidence unless the
   lecture demonstrates the cognitive action or asks the learner to perform it.
-- Bloom Alignment cannot be 5 unless the intended cognitive level is supported
-  repeatedly and clearly across the relevant instructional experience.
-- If support for the intended Bloom level is present but brief, optional, uneven,
-  or concentrated in only one small moment, Bloom Alignment should be at most 4.
+- Bloom Alignment can be 5 when the intended Bloom level is supported clearly
+  at the instructional moments where that level is relevant. For mixed Bloom
+  targets, lower-level setup segments do not prevent a 5 if higher-level
+  outcomes are meaningfully supported later.
+- If support for the intended Bloom level is present but too brief, optional,
+  uneven, or isolated to support the stated objective, Bloom Alignment should be
+  at most 4.
 - If most of the lesson operates below the intended Bloom level, Bloom Alignment
   should be at most 3.
 - For ICAP Alignment, compare expected_icap_level against observed ICAP signals,
@@ -657,13 +680,14 @@ Rating scale:
 - Do not infer or revise the expected ICAP level. Use
   LectureInference.expected_icap_level as the target.
 - Narration and slide viewing alone count as Passive engagement.
-- ICAP Alignment cannot be 5 unless the expected engagement level is supported
-  repeatedly and clearly, not just through one brief prompt.
+- ICAP Alignment can be 5 when the expected engagement level is supported
+  repeatedly at meaningful points in the lesson. Engagement does not need to be
+  continuous in every segment.
 - Rhetorical questions, narrator self-questions, or transitions do not count as
   Active or Constructive unless the learner is explicitly asked to do cognitive
   work.
-- If engagement prompts are brief, optional, or not sustained, ICAP Alignment
-  should be at most 4.
+- If engagement prompts are brief, optional, isolated, or too weak to support
+  the expected engagement level, ICAP Alignment should be at most 4.
 - If the lesson mostly asks learners only to watch or listen while the expected
   level is Active, Constructive, or Interactive, ICAP Alignment should be at
   most 3.

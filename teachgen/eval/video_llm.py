@@ -9,8 +9,11 @@ from pydantic import BaseModel
 OutputModel = TypeVar("OutputModel", bound=BaseModel)
 
 class VideoLLM:
-    def __init__(self, model: str = "google/gemini-3.5-flash"):
-        self.model = model
+    def __init__(self, model: str | None = None):
+        self.model = model or os.environ.get(
+            "TEACHGEN_EVAL_VIDEO_MODEL",
+            "google/gemini-3.5-flash",
+        )
         self.client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=os.environ["OPENROUTER_API_KEY"],
