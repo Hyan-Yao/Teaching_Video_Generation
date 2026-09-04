@@ -11,6 +11,8 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .theme import SHARED_LIGHT_THEME, ThemeConfig
+
 
 @dataclass
 class ModelConfig:
@@ -33,6 +35,7 @@ class Config:
     api_key: str = ""
 
     models: ModelConfig = field(default_factory=ModelConfig)
+    theme: ThemeConfig = field(default_factory=lambda: SHARED_LIGHT_THEME)
 
     # Feedback loop
     use_feedback: bool = True

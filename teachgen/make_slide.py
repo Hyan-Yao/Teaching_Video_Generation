@@ -3,7 +3,7 @@
 """
 make_slide.py — Generate one polished slide from arbitrary text input.
 
-Style: navy + moss double rounded border on cream paper, bold navy title,
+Style: navy + teal double rounded border on cream paper, bold navy title,
 round-dot bullets, and a bottom 3-stage "A + B = result" diagram.
 
 USAGE
@@ -47,12 +47,12 @@ from pptx.enum.shapes import MSO_SHAPE
 
 # ----------------------------- palette -----------------------------
 NAVY      = RGBColor(0x1B, 0x3A, 0x6B)
-MOSS      = RGBColor(0x7A, 0x9A, 0x6B)
+MOSS      = RGBColor(0x0F, 0x76, 0x6E)  # canonical secondary teal
 PAPER     = RGBColor(0xF7, 0xF6, 0xF0)
 INK       = RGBColor(0x2A, 0x2A, 0x2A)
-ACCENT    = RGBColor(0x2D, 0x6C, 0xDF)
-ACCENT_BG = RGBColor(0xEA, 0xF0, 0xFB)
-WHITE     = RGBColor(0xFF, 0xFF, 0xFF)
+ACCENT    = RGBColor(0x9A, 0x67, 0x00)  # canonical dark gold
+ACCENT_BG = RGBColor(0xE4, 0xE0, 0xD5)
+WHITE     = PAPER
 
 SLIDE_W = 10.0
 SLIDE_H = 7.16

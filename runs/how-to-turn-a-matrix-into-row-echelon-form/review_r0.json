@@ -1,0 +1,30 @@
+{
+  "overall_score": 7.0,
+  "content_issues": [
+    {
+      "segment_id": "seg2",
+      "field": "narration",
+      "issue": "The explanation in seg2 needs clarification. The phrase 'each leading entry of a row is to the right of the leading entry of the row above it' is unclear.",
+      "suggestion": "It should specify that leading entries must be non-zero and emphasize that each leading entry is the first non-zero number in that row."
+    },
+    {
+      "segment_id": "seg4",
+      "field": "visual_brief",
+      "issue": "The animation does not clearly demonstrate the transformation into row echelon form.",
+      "suggestion": "The steps should visually highlight each row operation with distinct labels to match the narration."
+    }
+  ],
+  "visual_issues": [
+    {
+      "segment_id": "seg3",
+      "issue": "The animations have poor contrast, making text hard to read.",
+      "suggestion": "Enhance the color scheme for better readability, particularly for key elements being highlighted."
+    },
+    {
+      "segment_id": "seg4",
+      "issue": "The animations have poor contrast, making text hard to read.",
+      "suggestion": "Enhance the color scheme for better readability, particularly for key elements being highlighted."
+    }
+  ],
+  "summary": ""
+}

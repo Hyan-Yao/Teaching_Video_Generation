@@ -47,22 +47,29 @@ For PPT (16:9) we request the landscape 1536x1024 (3:2) and can optionally
 pad/crop to an exact 16:9 canvas with --exact-169 (needs Pillow).
 """
 
+from __future__ import annotations
+
 import argparse
 import base64
 import os
 import sys
 import textwrap
 
+try:  # package import and direct-script execution are both supported
+    from .theme import SHARED_LIGHT_THEME
+except ImportError:  # pragma: no cover - exercised by direct CLI usage
+    from theme import SHARED_LIGHT_THEME
+
 try:
     from openai import OpenAI
 except ImportError:
-    sys.exit("Missing dependency. Run: pip install openai")
+    OpenAI = None
 
 
 # ----------------------------------------------------------------------
 # STEP 1 — expand a concept into a detailed English image prompt via GPT
 # ----------------------------------------------------------------------
-PROMPT_SYSTEM = textwrap.dedent("""\
+_PROMPT_SYSTEM_TEMPLATE = textwrap.dedent("""\
     You are an expert visual-explainer and art director. Given a teaching
     concept, you write ONE detailed English prompt for a text-to-image model
     that will produce a single polished, presentation-ready educational
@@ -75,14 +82,24 @@ PROMPT_SYSTEM = textwrap.dedent("""\
       - Readable, correctly-spelled text labels for each element (keep labels
         SHORT — 1-3 words — and few, since image models mangle long text).
       - A cohesive, modern style: flat vector / clean infographic, generous
-        whitespace, a restrained palette (name 2-3 hex-like colours), soft
-        shadows, rounded shapes.
-      - Landscape 3:2 / 16:9 composition suitable for a slide, light cream or
-        white background, no photorealism, no clutter, no watermark.
+        whitespace, soft shadows, and rounded shapes.
+      - Landscape 3:2 / 16:9 composition suitable for a slide, no photorealism,
+        no clutter, no watermark.
+
+    The final style constraint below is authoritative and must be repeated with
+    its exact color values in your output:
+    {theme_constraint}
 
     Output ONLY the final image prompt as a single paragraph. No preamble,
     no quotes, no markdown.
 """)
+
+
+def build_prompt_system(theme_constraint: str) -> str:
+    return _PROMPT_SYSTEM_TEMPLATE.format(theme_constraint=theme_constraint)
+
+
+PROMPT_SYSTEM = build_prompt_system(SHARED_LIGHT_THEME.concept_constraint())
 
 
 def build_user_brief(concept: str, audience: str, style: str) -> str:
@@ -189,6 +206,8 @@ def main():
     need_client = not (args.raw_prompt and args.dry_run)
     client = None
     if need_client:
+        if OpenAI is None:
+            sys.exit("Missing dependency. Run: pip install openai")
         if not os.environ.get("OPENAI_API_KEY"):
             sys.exit("Set OPENAI_API_KEY in your environment first.")
         client = OpenAI()
@@ -201,6 +220,7 @@ def main():
         print("[step 1] asking GPT to write a detailed English image prompt...")
         image_prompt = generate_prompt(
             client, args.concept, args.audience, args.style, args.text_model)
+        image_prompt = f"{image_prompt}\n\n{SHARED_LIGHT_THEME.concept_constraint()}"
 
     print("----- IMAGE PROMPT -----")
     print(image_prompt)

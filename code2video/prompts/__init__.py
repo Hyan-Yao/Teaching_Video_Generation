@@ -1,5 +1,5 @@
 # prompts/__init__.py
-from .base_class import base_class
+from .base_class import base_class, get_base_class
 from .stage1 import get_prompt1_outline
 from .stage2 import get_prompt2_storyboard, get_prompt_download_assets, get_prompt_place_assets
 from .stage3 import get_prompt3_code, get_regenerate_note
@@ -9,6 +9,7 @@ from .stage5_unlearning import get_unlearning_prompt, get_unlearning_and_video_l
 
 __all__ = [
     "base_class",
+    "get_base_class",
     "get_prompt1_outline",
     "get_prompt2_storyboard",
     "get_prompt_download_assets",

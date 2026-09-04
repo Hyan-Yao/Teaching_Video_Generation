@@ -49,7 +49,7 @@ class AnimationRenderer:
     modality = Modality.ANIMATION
 
     def render(self, seg: Segment, ctx: RenderContext) -> VisualAsset:
-        agent_mod, base_class = _load_code2video(ctx.cfg.repo_root)
+        agent_mod = _load_code2video(ctx.cfg.repo_root)
 
         spec = self._storyboard(ctx, seg)
         section = agent_mod.Section(
@@ -66,10 +66,16 @@ class AnimationRenderer:
             max_code_token_length=10000,
             max_regenerate_tries=2,     # outer: regenerate whole scene
             max_fix_bug_tries=3,        # inner: ScopeRefine bug fixes per attempt
+            theme=ctx.cfg.theme.to_code2video(),
         )
 
         # code2video hard-codes a "CASES" layout and resolves json_files relative to it.
-        folder = ctx.cfg.repo_root / "code2video" / "CASES" / f"tg_{ctx.cfg.run_dir.name}"
+        folder = (
+            ctx.cfg.repo_root
+            / "code2video"
+            / "CASES"
+            / f"tg_{ctx.cfg.run_dir.name}"
+        )
         agent = agent_mod.TeachingVideoAgent(
             idx=0, knowledge_point=seg.title, folder=folder, cfg=cfg
         )
@@ -130,9 +136,7 @@ def _load_code2video(repo_root: Path):
         if p not in sys.path:
             sys.path.insert(0, p)
     import agent  # noqa: E402  (code2video/agent.py)
-    from prompts import base_class  # noqa: E402  (repo_root/prompts)
-
-    return agent, base_class
+    return agent
 
 
 def _duration(path: Path) -> float:

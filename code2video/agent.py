@@ -16,6 +16,7 @@ from utils import *
 from scope_refine import *
 from external_assets import process_storyboard_with_assets
 from slide_bg import create_background
+from themes import normalize_theme
 
 
 @dataclass
@@ -54,6 +55,7 @@ class RunConfig:
     max_regenerate_tries: int = 10
     max_feedback_gen_code_tries: int = 3
     max_mllm_fix_bugs_tries: int = 3
+    theme: Optional[Dict[str, Any]] = None
 
 
 class TeachingVideoAgent:
@@ -79,6 +81,8 @@ class TeachingVideoAgent:
         self.max_regenerate_tries = cfg.max_regenerate_tries
         self.max_feedback_gen_code_tries = cfg.max_feedback_gen_code_tries
         self.max_mllm_fix_bugs_tries = cfg.max_mllm_fix_bugs_tries
+        self.theme = normalize_theme(cfg.theme)
+        self.base_class = get_base_class(self.theme)
 
         """2. Path for output"""
         self.folder = folder
@@ -219,6 +223,7 @@ class TeachingVideoAgent:
             prompt2 = get_prompt2_storyboard(
                 outline=json.dumps(self.outline.__dict__, ensure_ascii=False, indent=2),
                 reference_image_path=refer_img_path,
+                theme=self.theme,
             )
 
             for attempt in range(1, self.max_regenerate_tries + 1):
@@ -326,7 +331,12 @@ class TeachingVideoAgent:
                 )
 
         else:
-            code_gen_prompt = get_prompt3_code(regenerate_note=regenerate_note, section=section, base_class=base_class)
+            code_gen_prompt = get_prompt3_code(
+                regenerate_note=regenerate_note,
+                section=section,
+                base_class=self.base_class,
+                theme=self.theme,
+            )
 
         response = self._request_api_and_track_tokens(code_gen_prompt, max_tokens=self.max_code_token_length)
         if response is None:
@@ -346,7 +356,7 @@ class TeachingVideoAgent:
             code = code.split("```")[1].strip()
 
         # Replace base class
-        code = replace_base_class(code, base_class)
+        code = replace_base_class(code, self.base_class)
 
         with open(code_file, "w", encoding="utf-8") as f:
             f.write(code)
@@ -527,7 +537,7 @@ class TeachingVideoAgent:
 
     def _generate_section_bg(self, section: Section) -> None:
         try:
-            create_background(self.output_dir / "bg.png")
+            create_background(self.output_dir / "bg.png", theme=self.theme)
         except Exception as e:
             print(f"⚠️ Background generation failed for {section.id}: {e}")
 
@@ -843,7 +853,6 @@ def build_and_parse_args():
     parser.add_argument("--parallel_group_num", type=int, default=3)
     parser.add_argument("--max_concepts", type=int, help="Limit # concepts for a quick run, -1 for all", default=-1)
     parser.add_argument("--knowledge_point", type=str, help="if knowledge_file not given, can ignore", default=None)
-
     return parser.parse_args()
 
 

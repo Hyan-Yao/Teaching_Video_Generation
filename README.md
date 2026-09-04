@@ -22,6 +22,14 @@ python -m teachgen --topic "How the Fourier transform works"
 python -m teachgen --topic "Vectors" --plan-only
 ```
 
+The shared cream/navy/teal/gold theme is applied to concept images, Manim animations,
+and recap slides. The original topic-driven CLI workflow is unchanged.
+
+For a historical comparison, render the new branch first, switch to `main`, and run
+the original command into a separate output directory. There is intentionally no
+runtime compatibility selector; see `docs/video-style-unification.md` for the full
+command sequence.
+
 The output video lands at `runs/<topic>/video/final.mp4`. See **`teachgen/README.md`**
 for the architecture, the two-phase flow, the three renderers, and how to extend it.
 
@@ -96,4 +104,3 @@ teachgen/     orchestrator: planner, renderers, audio, compositor, feedback
               + make_slide.py and concept_image.py (the slide / image helpers)
 runs/         generated lessons
 ```
-

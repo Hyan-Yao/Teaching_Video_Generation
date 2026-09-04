@@ -1,7 +1,7 @@
 """`slide` renderer — a polished slide rasterized directly to PNG via PIL.
 
-We reuse make_slide.py's text parsing (Title / bullets / Diagram markers) and its
-navy+moss+cream palette, but draw straight to a 1920x1080 image with Pillow instead
+We reuse make_slide.py's text parsing (Title / bullets / Diagram markers) and draw
+the configured theme straight to a 1920x1080 image with Pillow instead
 of going pptx -> LibreOffice -> poppler. That removes two heavy system dependencies
 and makes the slide path fast, deterministic, and portable.
 
@@ -20,15 +20,6 @@ from PIL import Image, ImageDraw, ImageFont
 from ..schema import Modality, Segment, VisualAsset
 from .base import RenderContext
 from .. import make_slide  # the standalone helper, now a teachgen module
-
-# Palette (mirrors make_slide.py) as plain RGB tuples.
-NAVY = (0x1B, 0x3A, 0x6B)
-MOSS = (0x7A, 0x9A, 0x6B)
-PAPER = (0xF7, 0xF6, 0xF0)
-INK = (0x2A, 0x2A, 0x2A)
-ACCENT = (0x2D, 0x6C, 0xDF)
-ACCENT_BG = (0xEA, 0xF0, 0xFB)
-WHITE = (0xFF, 0xFF, 0xFF)
 
 W, H = 1920, 1080
 
@@ -60,19 +51,25 @@ class SlideRenderer:
         title, bullets, diagram = make_slide.parse_input(slide_text)
 
         png_path = ctx.out_dir / f"{seg.id}.png"
-        _draw_slide(title, bullets, diagram, make_slide.split_bold, png_path)
+        _draw_slide(title, bullets, diagram, make_slide.split_bold, png_path, ctx.cfg.theme)
         return VisualAsset(segment_id=seg.id, kind="image", path=str(png_path))
 
 
 # --------------------------------------------------------------------- drawing
-def _draw_slide(title, bullets, diagram, split_bold, out_path: Path) -> None:
+def _draw_slide(title, bullets, diagram, split_bold, out_path: Path, theme) -> None:
+    primary = _rgb(theme.primary)
+    secondary = _rgb(theme.secondary)
+    background = _rgb(theme.background)
+    body = _rgb(theme.body)
+    highlight = _rgb(theme.highlight)
+    panel = _rgb(theme.panel)
     title = title.replace("**", "")  # title isn't bold-parsed; drop any stray markers
-    img = Image.new("RGB", (W, H), PAPER)
+    img = Image.new("RGB", (W, H), background)
     d = ImageDraw.Draw(img)
 
-    # double rounded border (navy outer, moss inner)
-    d.rounded_rectangle([34, 34, W - 34, H - 34], radius=28, outline=NAVY, width=7)
-    d.rounded_rectangle([60, 60, W - 60, H - 60], radius=22, outline=MOSS, width=3)
+    # Double rounded border (primary outer, secondary inner).
+    d.rounded_rectangle([34, 34, W - 34, H - 34], radius=28, outline=primary, width=7)
+    d.rounded_rectangle([60, 60, W - 60, H - 60], radius=22, outline=secondary, width=3)
 
     title_font = _font(64, bold=True)
     bullet_font = _font(40)
@@ -82,13 +79,13 @@ def _draw_slide(title, bullets, diagram, split_bold, out_path: Path) -> None:
     margin = 140
     y = 110
     for line in _wrap(title, title_font, W - 2 * margin, d):
-        d.text((margin, y), line, font=title_font, fill=NAVY)
+        d.text((margin, y), line, font=title_font, fill=primary)
         y += int(title_font.size * 1.2)
 
-    # moss underline under the title
+    # Secondary underline under the title.
     y += 10
-    d.line([(margin, y), (margin + 520, y)], fill=MOSS, width=5)
-    d.ellipse([margin - 24, y - 9, margin - 6, y + 9], fill=MOSS)
+    d.line([(margin, y), (margin + 520, y)], fill=secondary, width=5)
+    d.ellipse([margin - 24, y - 9, margin - 6, y + 9], fill=secondary)
     y += 60
 
     # bullets
@@ -98,25 +95,26 @@ def _draw_slide(title, bullets, diagram, split_bold, out_path: Path) -> None:
     for b in bullets:
         if y > bullets_bottom:
             break
-        d.ellipse([margin, y + 14, margin + 18, y + 32], fill=NAVY)
+        d.ellipse([margin, y + 14, margin + 18, y + 32], fill=primary)
         _draw_runs(d, margin + 44, y, b, split_bold, bullet_font, bullet_bold,
-                   W - margin - 44, line_h)
+                   W - margin - 44, line_h, primary, body)
         # advance by however many wrapped lines the bullet took
         n_lines = max(1, len(_wrap(_plain(b), bullet_font, W - margin - 44, d)))
         y += line_h * n_lines + 16
 
     if has_diagram:
-        _draw_diagram(d, diagram)
+        _draw_diagram(d, diagram, background, primary, secondary, highlight, panel)
 
     img.save(out_path, format="PNG")
 
 
-def _draw_runs(d, x, y, text, split_bold, font, bold_font, max_w, line_h):
+def _draw_runs(d, x, y, text, split_bold, font, bold_font, max_w, line_h,
+               primary, body):
     """Draw a bullet, honoring **bold** lead-ins, with naive wrapping."""
     cur_x, cur_y = x, y
     for chunk, is_bold in split_bold(text):
         f = bold_font if is_bold else font
-        col = NAVY if is_bold else INK
+        col = primary if is_bold else body
         chunk = chunk.replace("**", "")  # drop any unpaired bold markers left over
         for word in chunk.split(" "):
             if not word:
@@ -129,31 +127,31 @@ def _draw_runs(d, x, y, text, split_bold, font, bold_font, max_w, line_h):
             cur_x += w
 
 
-def _draw_diagram(d, nodes):
+def _draw_diagram(d, nodes, background, primary, secondary, highlight, panel):
     labels = (list(nodes) + ["Input", "Process", "Output"])[:3]
     cy = H - 300
     r = 95
-    # node A (navy)
+    # Node A (primary).
     ax = 320
-    d.ellipse([ax - r, cy - r, ax + r, cy + r], fill=WHITE, outline=NAVY, width=6)
-    _centered(d, _initials(labels[0]), _font(70, bold=True), ax, cy, NAVY)
-    _centered(d, labels[0], _font(34, bold=True), ax, cy + r + 40, NAVY)
+    d.ellipse([ax - r, cy - r, ax + r, cy + r], fill=background, outline=primary, width=6)
+    _centered(d, _initials(labels[0]), _font(70, bold=True), ax, cy, primary)
+    _centered(d, labels[0], _font(34, bold=True), ax, cy + r + 40, primary)
     # plus
-    _centered(d, "+", _font(70, bold=True), ax + 230, cy, MOSS)
-    # node B (moss)
+    _centered(d, "+", _font(70, bold=True), ax + 230, cy, secondary)
+    # Node B (secondary).
     bx = ax + 460
-    d.ellipse([bx - r, cy - r, bx + r, cy + r], fill=WHITE, outline=MOSS, width=6)
-    _centered(d, _initials(labels[1]), _font(70, bold=True), bx, cy, MOSS)
-    _centered(d, labels[1], _font(34, bold=True), bx, cy + r + 40, MOSS)
+    d.ellipse([bx - r, cy - r, bx + r, cy + r], fill=background, outline=secondary, width=6)
+    _centered(d, _initials(labels[1]), _font(70, bold=True), bx, cy, secondary)
+    _centered(d, labels[1], _font(34, bold=True), bx, cy + r + 40, secondary)
     # arrow
     ax2 = bx + 200
-    d.line([(ax2, cy), (ax2 + 130, cy)], fill=NAVY, width=8)
-    d.polygon([(ax2 + 130, cy - 18), (ax2 + 175, cy), (ax2 + 130, cy + 18)], fill=NAVY)
+    d.line([(ax2, cy), (ax2 + 130, cy)], fill=primary, width=8)
+    d.polygon([(ax2 + 130, cy - 18), (ax2 + 175, cy), (ax2 + 130, cy + 18)], fill=primary)
     # result box (accent)
     rx0 = ax2 + 210
     d.rounded_rectangle([rx0, cy - 95, rx0 + 560, cy + 95], radius=18,
-                        fill=ACCENT_BG, outline=ACCENT, width=5)
-    _centered(d, labels[2], _font(48, bold=True), rx0 + 280, cy, ACCENT)
+                        fill=panel, outline=highlight, width=5)
+    _centered(d, labels[2], _font(48, bold=True), rx0 + 280, cy, highlight)
 
 
 # ----------------------------------------------------------------------- utils
@@ -161,6 +159,11 @@ def _centered(d, text, font, cx, cy, color):
     w = d.textlength(text, font=font)
     asc, desc = font.getmetrics()
     d.text((cx - w / 2, cy - (asc + desc) / 2), text, font=font, fill=color)
+
+
+def _rgb(value: str) -> tuple[int, int, int]:
+    value = value.lstrip("#")
+    return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
 
 
 def _wrap(text, font, max_w, d):

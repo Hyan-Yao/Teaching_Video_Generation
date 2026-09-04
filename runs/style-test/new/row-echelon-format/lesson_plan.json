@@ -1,0 +1,72 @@
+{
+  "topic": "Row Echelon Format",
+  "audience": "general learners",
+  "objectives": [
+    "Understand what row echelon format is and its importance in linear algebra",
+    "Recognize the characteristics of a matrix in row echelon form",
+    "Learn the steps to convert a matrix into row echelon form",
+    "Interpret the role of row echelon form in solving linear equations"
+  ],
+  "segments": [
+    {
+      "id": "seg1",
+      "title": "Introduction to Row Echelon Format",
+      "narration": "Have you ever wondered how we solve systems of linear equations neatly? One key concept that helps in this process is the row echelon format.",
+      "modality": "animation",
+      "visual_brief": "Animate a transition from a complex, unordered system of linear equations to a neatly organized form. Show equations in a grid-like structure transforming into a more orderly arrangement, paralleling their conversion to row echelon format.",
+      "rationale": "Animation helps visualize the transformation from disordered equations to an organized form, introducing the concept dynamically.",
+      "target_seconds": 8.0,
+      "hints": {}
+    },
+    {
+      "id": "seg2",
+      "title": "Intuitive Understanding of Row Echelon Format",
+      "narration": "Think of sorting a pile of books so they stand straight in a row – this helps us identify and grab a specific book quickly. Similarly, the row echelon form organizes rows in a matrix for easy solving.",
+      "modality": "concept_image",
+      "visual_brief": "Illustrate a metaphor of a row of books sorted on a shelf (aligning with row echelon form). Key components: books standing upright, a hand grabbing a specific book, and a row of books ordered by size or title. Layout: a left-to-right setup with a warm, inviting color scheme.",
+      "rationale": "A concept image captures the metaphor of sorting books, providing a strong visual analogy for row echelon form.",
+      "target_seconds": 6.0,
+      "hints": {}
+    },
+    {
+      "id": "seg3",
+      "title": "Characteristics of Row Echelon Form",
+      "narration": "A matrix is in row echelon form when each leading entry is one, and each leading one of a row is to the right of the leading number in the row above it. Plus, any rows of all zeros are at the bottom.",
+      "modality": "animation",
+      "visual_brief": "Animate a 3x3 matrix transformation, highlighting leading entries becoming one and their alignment rules, with zeros moving to the bottom. Use color to accentuate leading ones and rows of zeros.",
+      "rationale": "Animation is suitable for demonstrating the dynamic properties and systematic rules of arranging a row echelon format.",
+      "target_seconds": 10.0,
+      "hints": {}
+    },
+    {
+      "id": "seg4",
+      "title": "Steps to Achieve Row Echelon Format",
+      "narration": "To convert a matrix to row echelon form, you use row operations like row swaps, row addition, or multiplying a row by a non-zero constant. These systematic changes aim to create zeros below each leading number.",
+      "modality": "animation",
+      "visual_brief": "Illustrate step-by-step row operations on a matrix: row swaps, row addition, and row multiplication. Show these systematically transforming a matrix to have zeros below each leading one, using arrows and highlights to guide the viewer.",
+      "rationale": "Animation enables a clear demonstration of each row operation step and its impact on the matrix.",
+      "target_seconds": 12.0,
+      "hints": {}
+    },
+    {
+      "id": "seg5",
+      "title": "Example of Converting to Row Echelon Form",
+      "narration": "Let's take a simple 3x3 matrix and walk through how to apply these operations. We'll continue adjusting each row until we've got that stair-step pattern we want.",
+      "modality": "animation",
+      "visual_brief": "Show a 3x3 matrix undergoing row operations in real-time. Step through each transformation until the final row echelon form is achieved, highlighting the stair-step pattern that results.",
+      "rationale": "Animation will allow viewers to follow along with each step, reinforcing the process of achieving row echelon form.",
+      "target_seconds": 15.0,
+      "hints": {}
+    },
+    {
+      "id": "seg6",
+      "title": "Recap and Importance",
+      "narration": "To wrap it up, row echelon format simplifies matrices, making it easier to solve equations. Understanding this concept will help you tackle complex systems efficiently.",
+      "modality": "slide",
+      "visual_brief": "Create a concise bulleted slide summarizing key points: definition of row echelon form, its characteristics, fundamental steps, and its significance in simplifying equations and solving complex systems.",
+      "rationale": "A summary slide effectively encapsulates the lesson's core concepts for recall.",
+      "target_seconds": 7.0,
+      "hints": {}
+    }
+  ]
+}

@@ -18,6 +18,8 @@ python -m teachgen --topic "Vectors" --audience "high-school students" \
     --max-rounds 3 --score-threshold 8.0 --no-parallel --run-dir runs
 ```
 
+The unified light style is always active; the original CLI workflow is unchanged.
+
 ## Two phases
 
 - **Phase 1 — planner (text only).** topic → teaching content (objectives +

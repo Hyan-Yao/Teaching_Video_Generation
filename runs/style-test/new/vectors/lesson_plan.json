@@ -1,0 +1,72 @@
+{
+  "topic": "Vectors",
+  "audience": "general learners",
+  "objectives": [
+    "Understand the basic concept of a vector",
+    "Differentiate between scalars and vectors",
+    "Identify components of a vector",
+    "Perform basic vector addition"
+  ],
+  "segments": [
+    {
+      "id": "seg1",
+      "title": "Introduction to Vectors",
+      "narration": "Welcome! Today we're going to explore the fascinating world of vectors. Vectors are everywhere around us, from the way we describe movements to how forces act on objects.",
+      "modality": "concept_image",
+      "visual_brief": "Create a dynamic diagram depicting three distinct scenes: one with movements (like a person walking), another with objects experiencing force (like a car pushing forward), and a placeholder symbolic vector. Use arrows to show directions and emphasize vectors' role in daily observations. A vibrant color palette should attract general learners.",
+      "rationale": "This segment introduces vectors in a relatable way, best captured by a single illustrative concept image of their everyday presence.",
+      "target_seconds": 10.0,
+      "hints": {}
+    },
+    {
+      "id": "seg2",
+      "title": "Distinguishing Scalars and Vectors",
+      "narration": "First, let's understand what makes vectors special. We often use numbers, called scalars, which only have magnitude, like temperature or speed. A vector, on the other hand, has both magnitude and direction, such as velocity or force.",
+      "modality": "animation",
+      "visual_brief": "Animate a comparison between scalars and vectors. Start with a scalar example like a number line for temperature, then transition to show a vector as an arrow, highlighting both magnitude (length) and direction. Use contrasting colors: blue for scalars and red for vectors.",
+      "rationale": "Animation effectively differentiates between magnitude and direction, showing vectors as arrows.",
+      "target_seconds": 15.0,
+      "hints": {}
+    },
+    {
+      "id": "seg3",
+      "title": "Components of a Vector",
+      "narration": "Now, imagine a vector as an arrow. The length of the arrow represents the magnitude, and the direction it points to is, well, its direction. We can also break down a vector into horizontal and vertical parts, called components.",
+      "modality": "animation",
+      "visual_brief": "Animate a vector depicted as an arrow. Break it down into horizontal and vertical components, showing these as separate, smaller arrows. Highlight the original vector and components with different colors, such as green for the original, blue for horizontal, and yellow for vertical.",
+      "rationale": "Animation clearly demonstrates the breakdown of a vector into its components, essential for learners to visualize magnitude and direction.",
+      "target_seconds": 15.0,
+      "hints": {}
+    },
+    {
+      "id": "seg4",
+      "title": "Vector Addition Made Simple",
+      "narration": "Adding vectors might sound tricky, but it's not too bad. Place the tail of one arrow at the head of the other, and the resulting vector stretches from the free tail to the free head. This is called the 'head-to-tail' method.",
+      "modality": "animation",
+      "visual_brief": "Show the 'head-to-tail' method for vector addition. Animate placing two vector arrows sequentially (one's head connected to the other's tail). Highlight the resultant vector from free tail to free head in a sweeping motion to convey the addition process.",
+      "rationale": "Animation effectively illustrates the dynamic process of vector addition.",
+      "target_seconds": 15.0,
+      "hints": {}
+    },
+    {
+      "id": "seg5",
+      "title": "Real-World Example: Walking Home",
+      "narration": "Picture walking home from school. If you walk 3 blocks east and then 4 blocks north, you've essentially created a vector path. The direct line from where you started to home is the resultant vector.",
+      "modality": "concept_image",
+      "visual_brief": "Design an aerial map view including the path of walking 3 blocks east and 4 blocks north. Use arrows and blocks to represent the path, and draw the resultant vector directly across from start to finish. Soft colors for the environment and bolder colors for vectors.",
+      "rationale": "A concept image best visualizes this real-world example, reinforcing the vector concept in a relatable context.",
+      "target_seconds": 15.0,
+      "hints": {}
+    },
+    {
+      "id": "seg6",
+      "title": "Recap and Next Steps",
+      "narration": "So, vectors are more than just numbers; they show us magnitude and direction. We've learned how to add them and even seen how they're part of everyday life. Next time, we'll dive into more complex operations with vectors.",
+      "modality": "slide",
+      "visual_brief": "Create a polished slide summarizing the key points: defining vectors, their components, the head-to-tail method, and real-world applications. Use bullet points and a clear layout for readability, with a catchy title and sections for clarity.",
+      "rationale": "Slides work best for recapping key learning points and setting up for the next session.",
+      "target_seconds": 10.0,
+      "hints": {}
+    }
+  ]
+}

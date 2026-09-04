@@ -1,7 +1,10 @@
 import json
 
+from themes import normalize_theme
 
-def get_prompt2_storyboard(outline, reference_image_path):
+
+def get_prompt2_storyboard(outline, reference_image_path, theme=None):
+    theme = normalize_theme(theme)
 
     base_prompt = f""" 
     You are a professional education Explainer and Animator, expert at converting mathematical teaching outlines into storyboard scripts suitable for the Manim animation system.
@@ -32,7 +35,7 @@ def get_prompt2_storyboard(outline, reference_image_path):
     - Give extra attention to sections that can benefit most from the visual concepts shown in the reference image
     """
 
-    base_prompt += """
+    base_prompt += f"""
     ## Storyboard Requirements
     
     ### Content Structure
@@ -43,7 +46,11 @@ def get_prompt2_storyboard(outline, reference_image_path):
     - Do not apply any animation to lecture lines except for changing the color of corresponding line when its related animation is presented.
 
     ### Visual Design
-    - Colors: Background fixed at #000000, use ligt color for contrast.
+    - Colors: Background fixed at {theme['background']}; use {theme['primary']} for primary
+      structure/text, {theme['secondary']} for secondary accents, {theme['highlight']} for
+      emphasis, and {theme['body']} for readable body text.
+    - Panels and grids use {theme['panel']} / {theme['grid']}. Maintain strong contrast and
+      do not introduce a conflicting dark/light palette.
     - IMPORTANT: Provide hexadecimal codes for colors.
     - Element Labeling: Assign clear colors and labels near all elements (formulas, etc.).
 
@@ -52,7 +59,7 @@ def get_prompt2_storyboard(outline, reference_image_path):
     - Emphasis Effects: Flashing, color changes, bolding to highlight key knowledge points.
 
     ### Constraints
-    - No panels or 3D methods.
+    - Use only restrained flat 2D panels; no 3D methods.
     - Avoid coordinate axes unless absolutely necessary.
     - Focus animations on visualizing concepts that are difficult to grasp from lecture lines alone.
     - Ensure that all animations are easy to understand.

@@ -1,14 +1,31 @@
 import os
 
+from themes import normalize_theme
 
-def get_prompt3_code(regenerate_note, section, base_class):
+
+def _style_guidance(theme):
+    return f"""7. RICH TEXT & VISUAL STYLING — Shared Light Academic Theme (animation area only):
+The scene uses paper `{theme['background']}`. All generated objects, labels, formulas, and panels must maintain strong contrast on it.
+- Primary text/structure: `{theme['primary']}`  Secondary accent: `{theme['secondary']}`  Highlight: `{theme['highlight']}`
+- Body text: `{theme['body']}`  Subtle panel/grid: `{theme['panel']}`
+- Gradient: `obj.set_color_by_gradient("{theme['primary']}", "{theme['secondary']}")`
+- Highlight box: `SurroundingRectangle(obj, color="{theme['secondary']}", corner_radius=0.1, buff=0.08)`
+- Underline: `Underline(text_obj, color="{theme['highlight']}")`
+- Mixed rich text: `MarkupText('<b><span foreground="{theme['primary']}">Term</span></b>: definition', font_size=22)`
+- Restrained panel: `BackgroundRectangle(obj, color="{theme['panel']}", fill_opacity=0.45)`
+Use at least one technique per scene. Never use white lecture/body text, neon colors, dark panels, or low-contrast gold text on the paper background."""
+
+
+def get_prompt3_code(regenerate_note, section, base_class, theme=None):
+    theme = normalize_theme(theme)
+    style_guidance = _style_guidance(theme)
     return f"""
 You are an expert Manim animator using Manim Community Edition v0.19.0.
 Please generate a high-quality Manim class based on the following teaching script.
 {regenerate_note}
 
 1. Basic Requirements:
-- Use the provided TeachingScene base class WITHOUT modification — it sets up the dark background, gold title, cyan accent bar, and left-side lecture panel automatically.
+- Use the provided TeachingScene base class WITHOUT modification. It owns the `{theme['name']}` background, title, accent bar, and left-side lecture layout.
 - Each lecture line must have a matching color with its corresponding animation elements.
 - Color changes on lecture lines MUST use the `.animate` API:
   `self.play(self.lecture[n].animate.set_color(COLOR))`
@@ -55,30 +72,21 @@ class {section.id.title().replace('_', '')}Scene(TeachingScene):
         self.setup_layout("{section.title}", {section.lecture_lines})
 
         # === Animation for Lecture Line 1 ===
-        self.play(self.lecture[0].animate.set_color("#FFD166"))
-        obj = Circle(radius=0.5, color="#FFD166", fill_opacity=0.3)
+        self.play(self.lecture[0].animate.set_color("{theme['highlight']}"))
+        obj = Circle(radius=0.5, color="{theme['highlight']}", fill_opacity=0.3)
         self.place_at_grid(obj, 'C3', scale_factor=1.0)
         self.play(FadeIn(obj))
         self.wait(0.5)
 
         # === Animation for Lecture Line 2 ===
-        self.play(self.lecture[1].animate.set_color("#00F5D4"))
+        self.play(self.lecture[1].animate.set_color("{theme['secondary']}"))
         ...
 ```
 
-7. RICH TEXT & VISUAL STYLING — AIGC Dark Theme (animation area only):
-The scene uses a dark `#0a0a0f` background. Apply these color palette and techniques:
-- Primary accent (gold): `#FFD166`  Secondary accent (cyan): `#00F5D4`  Pop accent (pink): `#F72585`
-- Gradient on math/text: `obj.set_color_by_gradient("#FFD166", "#00F5D4")`
-- Soft highlight box: `SurroundingRectangle(obj, color="#00F5D4", corner_radius=0.1, buff=0.08)`
-- Underline key labels: `Underline(text_obj, color="#FFD166")`
-- Mixed rich text: `MarkupText('<b><span foreground="#FFD166">Term</span></b>: definition', font_size=22)`
-- Dark panel behind elements: `BackgroundRectangle(obj, color="#1a1a2e", fill_opacity=0.4)`
-- Glowing numbers: `DecimalNumber(...).set_color_by_gradient("#F72585", "#FFD166")`
-Use AT LEAST ONE of these techniques per scene to match the AIGC visual theme.
+{style_guidance}
 
 8. MANDATORY CONSTRAINTS:
-- Colors: Prefer the AIGC palette (`#FFD166`, `#00F5D4`, `#F72585`) over plain white/red/blue.
+- Colors: Use only the supplied theme palette (`{theme['primary']}`, `{theme['secondary']}`, `{theme['highlight']}`, `{theme['body']}`, `{theme['panel']}`) unless semantic red/green is essential.
 - Scaling: Maintain appropriate font sizes and object scales for readability on a 480p render.
 - Consistency: Do NOT apply any animation to lecture lines except `.animate.set_color()`; size and position of lecture lines and title must stay unchanged.
 - Assets: If provided, MUST use elements in Animation Description formatted as [Asset: XXX/XXX.png].
