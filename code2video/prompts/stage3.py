@@ -5,6 +5,22 @@ def get_prompt3_code(regenerate_note, section, base_class):
     target_seconds = getattr(section, "target_seconds", None) or 12
     line_count = max(1, len(section.lecture_lines))
     seconds_per_line = target_seconds / line_count
+    step_timings = getattr(section, "step_timings", None) or [
+        {
+            "start_seconds": index * seconds_per_line,
+            "end_seconds": (index + 1) * seconds_per_line,
+            "duration_seconds": seconds_per_line,
+        }
+        for index in range(line_count)
+    ]
+    timing_lines = "\n".join(
+        (
+            f"- Lecture Line {index + 1}: "
+            f"{timing['start_seconds']:.2f}s to {timing['end_seconds']:.2f}s "
+            f"({timing['duration_seconds']:.2f}s total)"
+        )
+        for index, timing in enumerate(step_timings)
+    )
     return f"""
 You are an expert Manim animator using Manim Community Edition v0.19.0.
 Please generate a high-quality Manim class based on the following teaching script.
@@ -49,19 +65,27 @@ lecture |  A1  A2  A3  A4  A5  A6
 - Lecture Lines: {section.lecture_lines}
 - Animation Description: {'; '.join(section.animations)}
 - Target narration duration: about {target_seconds:.1f} seconds total.
-- Timing budget: about {seconds_per_line:.1f} seconds per lecture line/animation block.
+- Narration-aligned timing windows:
+{timing_lines}
 
 6. AUDIO-VISUAL TIMING ALIGNMENT:
 - The rendered Manim scene should last about {target_seconds:.1f} seconds, matching
   the narration duration. Do not create a very short animation that freezes during
   narration, and do not create a much longer animation that makes audio end early.
-- Each `# === Animation for Lecture Line N ===` block should consume roughly
-  {seconds_per_line:.1f} seconds including `self.play(..., run_time=...)` and
-  `self.wait(...)`.
+- Each `# === Animation for Lecture Line N ===` block must consume the duration
+  assigned to that line above, including `self.play(..., run_time=...)` and
+  `self.wait(...)`. These windows come from the synthesized narration audio;
+  do not replace them with equal timing.
 - Use explicit `run_time` values for important animations. Avoid default short
   timings like only `self.wait(0.5)` unless the block has already used enough time.
 - The visual for lecture line N must appear while lecture line N is highlighted.
   Do not show visuals for later lecture lines early.
+- If a lecture line asks the learner to pause, calculate, predict, choose, or answer,
+  that block must show only the problem setup. Do not create the answer, completed
+  equation, highlighted result, or solution object in that block.
+- Create and reveal the answer only in the later block whose timing begins when the
+  synthesized narration actually says the answer. Do not instantiate a future answer
+  early and hide it with opacity; create it in the reveal block so it cannot leak.
 - Before moving to the next lecture line, fade out or remove stale right-side
   labels/shapes/arrows that would confuse the next step. Do not remove the fixed
   title or left lecture panel.

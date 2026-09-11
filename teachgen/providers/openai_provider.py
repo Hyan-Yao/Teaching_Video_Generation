@@ -137,26 +137,37 @@ class OpenAIProvider:
 
     # ---------------------------------------------------------------- vision
     def vision(
-        self, prompt: str, images: list[bytes], *, system: str = "", max_tokens: int = 4000
+        self,
+        prompt: str,
+        images: list[bytes],
+        *,
+        system: str = "",
+        max_tokens: int = 4000,
+        model: str | None = None,
     ) -> str:
         content = [{"type": "text", "text": prompt}]
         for img in images:
             b64 = base64.b64encode(img).decode()
             content.append(
-                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{_image_mime_type(img)};base64,{b64}"
+                    },
+                }
             )
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": content})
         resp = self._chat_completion_create(
-            model=self.m.vision, messages=messages, max_tokens=max_tokens
+            model=model or self.m.vision, messages=messages, max_tokens=max_tokens
         )
         raw = _message_content(resp)
         if not raw:
             raise RuntimeError(
                 "OpenAI vision returned empty content "
-                f"(model={self.m.vision}, finish_reason={_finish_reason(resp)})"
+                f"(model={model or self.m.vision}, finish_reason={_finish_reason(resp)})"
             )
         return raw.strip()
 
@@ -235,6 +246,14 @@ def _normalize_chat_kwargs(kwargs: dict) -> dict:
 def _is_gpt5_model(model: str) -> bool:
     lowered = model.casefold()
     return lowered.startswith("gpt-5") or "/gpt-5" in lowered
+
+
+def _image_mime_type(image: bytes) -> str:
+    if image.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if image.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    return "application/octet-stream"
 
 
 def _message_content(response) -> str:

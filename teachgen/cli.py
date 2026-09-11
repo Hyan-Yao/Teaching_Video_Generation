@@ -4,7 +4,7 @@
     python -m teachgen --request-json examples/regression_request.json
 
 Options let you stop after Phase 1 (to review the plan), tune the feedback loop, or
-swap the backend provider.
+override OpenAI models for an individual run.
 """
 
 from __future__ import annotations
@@ -17,15 +17,18 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from .config import Config
-from .pipeline import generate, phase1_plan
+from .pipeline import generate, generate_from_plan, phase1_plan
 from .providers import get_provider
-from .schema import TeachingRequest
+from .schema import LessonPlan, TeachingRequest
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(prog="teachgen", description=__doc__)
     ap.add_argument("--request-json", required=True, help="path to the structured teaching request JSON")
-    ap.add_argument("--provider", default="openai", choices=["openai", "gemini"])
+    ap.add_argument(
+        "--plan-json",
+        help="optional existing lesson plan JSON; skips Phase 1 and renders/refines from this plan",
+    )
     ap.add_argument("--text-model", help="override the text/planning/routing model")
     ap.add_argument(
         "--refinement-text-model",
@@ -35,7 +38,7 @@ def main() -> None:
     ap.add_argument("--visual-text-model", help="override the visual helper/code animation model")
     ap.add_argument(
         "--animation-code-model",
-        help="override the OpenRouter model used for Code2Video Manim code/refinement",
+        help="override the OpenAI model used for Code2Video Manim code/refinement",
     )
     ap.add_argument("--tts-model", help="override the TTS model")
     ap.add_argument("--image-model", help="override the image model")
@@ -63,6 +66,12 @@ def main() -> None:
         help="trigger outer plan repair when a plan-level video metric is <= this",
     )
     ap.add_argument(
+        "--outer-repair-mode",
+        choices=["auto", "plan_only", "asset_only"],
+        default="auto",
+        help="limit evaluator-driven outer repairs; asset_only is useful for visual-refiner demos",
+    )
+    ap.add_argument(
         "--eval-baseline",
         action="store_true",
         help="run the evaluator on the produced video and save results under evaluator_baseline",
@@ -70,8 +79,14 @@ def main() -> None:
     ap.add_argument(
         "--eval-chunk-seconds",
         type=float,
-        default=900,
+        default=120,
         help="chunk size used by the evaluator",
+    )
+    ap.add_argument(
+        "--eval-frame-interval-seconds",
+        type=float,
+        default=2,
+        help="seconds between frames sampled by the OpenAI evaluator",
     )
     ap.add_argument("--no-parallel", action="store_true")
     ap.add_argument("--max-workers", type=int, default=6)
@@ -93,6 +108,29 @@ def main() -> None:
         default="critic_first",
         help="critic_first retries bad animations with the Code2Video critic once; fallback_first immediately changes bad animations to concept_image",
     )
+    ap.add_argument(
+        "--asset-repair-modalities",
+        choices=["all", "animation"],
+        default="all",
+        help="limit evaluator-driven asset repair to all visual segments or animation-only segments",
+    )
+    ap.add_argument(
+        "--concept-image-validation-retries",
+        type=int,
+        default=1,
+        help="major-error regeneration attempts before concept images fall back to slides",
+    )
+    ap.add_argument(
+        "--refinement-patience",
+        type=int,
+        default=1,
+        help="stop after this many consecutive evaluated rounds fail to improve",
+    )
+    ap.add_argument(
+        "--resume",
+        action="store_true",
+        help="continue an interrupted nonempty run directory instead of refusing it",
+    )
     ap.add_argument("--run-dir", default="runs")
     ap.add_argument(
         "--plan-only",
@@ -106,7 +144,6 @@ def main() -> None:
 
     cfg = Config.from_env(
         request=request,
-        provider=args.provider,
         plan_refinement_mode=args.plan_refinement_mode,
         max_plan_rounds=args.max_plan_rounds,
         use_feedback=feedback_mode != "none",
@@ -114,13 +151,19 @@ def main() -> None:
         max_outer_rounds=args.max_rounds,
         score_threshold=args.score_threshold,
         outer_plan_repair_threshold=args.outer_plan_repair_threshold,
+        outer_repair_mode=args.outer_repair_mode,
         run_evaluator_baseline=args.eval_baseline,
         evaluator_chunk_seconds=args.eval_chunk_seconds,
+        evaluator_frame_interval_seconds=args.eval_frame_interval_seconds,
         parallel=not args.no_parallel,
         max_workers=args.max_workers,
         animation_mode=args.animation_mode,
         animation_feedback_rounds=args.animation_feedback_rounds,
         animation_repair_policy=args.animation_repair_policy,
+        asset_repair_modalities=args.asset_repair_modalities,
+        concept_image_validation_retries=max(0, args.concept_image_validation_retries),
+        refinement_patience=max(1, args.refinement_patience),
+        resume=args.resume,
         run_dir=args.run_dir,
     )
     if args.text_model:
@@ -144,7 +187,12 @@ def main() -> None:
         print(json.dumps(json.loads(plan.model_dump_json()), indent=2, ensure_ascii=False))
         return
 
-    result = generate(cfg)
+    if args.plan_json:
+        plan_path = Path(args.plan_json)
+        plan = LessonPlan.model_validate_json(plan_path.read_text(encoding="utf-8"))
+        result = generate_from_plan(cfg, plan)
+    else:
+        result = generate(cfg)
     print("\n=== Done ===")
     print("Lesson plan :", result["plan_path"])
     print("Final video :", result["video_path"])

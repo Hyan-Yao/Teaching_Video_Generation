@@ -215,6 +215,9 @@ Current LessonPlan:
 PlanEvaluationResult:
 {evaluation_json}
 
+Hard refinement constraints:
+{constraints}
+
 Revise the LessonPlan to address the weaknesses identified in the PlanEvaluationResult.
 
 Rules:
@@ -234,8 +237,23 @@ Rules:
 - For content-depth repairs, add one concrete explanatory unit where it belongs: a mechanism, worked example, contrast, mini-demonstration, or learner task. Do not add generic filler.
 - Keep unchanged segments unchanged unless their content is directly implicated by the evidence.
 - Avoid increasing total lesson length by more than necessary; targeted depth is better than broad narration inflation.
+- For post-render plan-level repairs, do not change an existing segment's modality or
+  visual_brief. Visual production problems belong to the separate asset refiner.
+  The only exception is an explicitly requested prompt/reveal timing split: keep the
+  original segment as the answer-free prompt state, revise its visual_brief to remove
+  every answer/result, and add one immediately following reveal segment containing
+  the solution state. Divide the existing narration between them instead of merely
+  adding the words "pause now" to one unchanged static visual.
+- Do not turn a slide or concept image into an animation while repairing coverage,
+  accuracy, logic, adaptation, Bloom, or ICAP.
 - You may rewrite objectives.
-- You may add, remove, split, merge, or reorder segments when needed.
+- Preserve existing segment IDs and order. Add at most one segment per round.
+- In outer refinement, add that segment only for explicitly identified premature
+  answer exposure, as a prompt/reveal split. Do not remove, merge, or reorder.
+- When the constraints say a prompt/reveal split is required, adding the reveal
+  segment is mandatory. The prompt segment must contain only the question/setup;
+  the reveal segment must begin with the spoken answer and show the answer. A static
+  prompt visual may never include the later solution.
 - You may edit segment title, narration, modality, visual_brief, rationale, target_seconds, and hints.
 - Keep segment IDs stable when the segment's role is mostly unchanged.
 - If you add a new segment, use a new stable ID like seg9.

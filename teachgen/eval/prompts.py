@@ -31,6 +31,13 @@ Rules:
 - If an event seems outside the supplied chunk range, omit it.
 - Every evidence item must describe one specific observation.
 - Report possible accuracy issues cautiously. Use an empty list when none are found.
+- Automatic speech recognition can collapse repeated digits, operators, equations,
+  acronyms, and code tokens. Do not report an exact-symbol accuracy issue from the
+  Whisper transcript alone when authoritative source narration is supplied.
+- Use authoritative source narration only to verify the exact symbolic string. It
+  is not evidence that the line was spoken, displayed, or synchronized at a
+  particular timestamp. If delivery cannot be confirmed from transcript/frames,
+  record uncertainty rather than a factual error.
 """
 
 VISUAL_MULTIMEDIA_EXTRACTOR_PROMPT = """
@@ -62,6 +69,17 @@ Rules:
   the narration at that moment.
 - List every visible defect you observe, including minor defects. If a defect is
   visible at multiple moments, report each distinct moment or range.
+- Each supplied image is explicitly labeled either "stable state" or "transition
+  candidate" from consecutive-frame motion analysis. Use only stable-state images
+  as evidence of finished typography, overlap, placement, or rendering quality.
+  A transition candidate can establish timing or event order, but temporary partial
+  text, overlapping source/destination objects, fading labels, or incomplete
+  diagrams in that frame are not finished-layout defects.
+- Treat an animation defect as confirmed only when it remains in at least two
+  stable-state samples, appears in a clearly settled final state, or the transcript
+  independently confirms that the malformed state is being taught as complete.
+- When a suspicious state appears in only one frame, describe it as transient or
+  uncertain and give it lower confidence. Do not convert it into a major defect.
 - Inspect animations as rendered artifacts, not just as intended concepts. If
   an animation is supposed to show a useful idea but the actual rendering is
   cramped, unreadable, visually broken, mostly empty, poorly synchronized, or
@@ -167,6 +185,9 @@ Rules:
   inaccuracy, or uncertainty, preserve that limitation in the inferred fields.
 - Do not drop visual defects, possible accuracy issues, weak prompts, or other
   concerns because the section is otherwise understandable or effective.
+- Preserve whether a visual concern is confirmed, persistent, transient, or
+  uncertain. Do not upgrade a one-frame transition artifact into a persistent
+  section defect.
 - When evidence is mixed, preserve both strengths and weaknesses rather than
   converting the section into a one-sided positive summary.
 - Build observed_concepts from the chunk's definitions, claims, examples,
@@ -236,6 +257,9 @@ Rules:
   possible inaccuracies, or uncertainty, preserve those limitations in lecture
   concerns or observed concept depth.
 - Do not drop visual defects or concerns because the overall lecture seems good.
+- Preserve confidence and persistence qualifiers from section evidence. Do not
+  turn an isolated or uncertain animation-transition observation into a
+  lecture-wide visual defect.
 - When section evidence is mixed, preserve both strengths and weaknesses rather
   than smoothing the lecture into a uniformly positive summary.
 - Infer expectations appropriate to the lecture's duration and scope.
@@ -360,11 +384,15 @@ Rating scale:
 
 - Score only the two assigned metrics.
 - Return metric names exactly as written above.
-- Score 5 only when the extracted evidence shows excellent performance with no
-  meaningful weakness for that metric.
-- Score 4 when performance is strong but there is any minor weakness, omission,
-  ambiguity, unsupported opportunity, or conflicting evidence.
-- If uncertain between 4 and 5, choose 4.
+- Score 5 when the requested criterion is fully satisfied for the target learner.
+  A 5 means excellent and complete for the stated scope, not theoretical
+  perfection. Harmless imperfections and optional improvements do not prevent 5.
+- Score 4 when an observed, criterion-relevant weakness slightly reduces the
+  effectiveness of otherwise strong work.
+- Do not choose 4 merely because more examples, detail, practice, or polish could
+  hypothetically be added. Identify an actual unmet requirement or learner impact.
+- If uncertain between 4 and 5, decide whether the observed weakness has a real,
+  criterion-specific consequence. Choose 5 when it does not.
 - If evidence is mixed, choose the lower score that reflects the weakness.
 - Do not assign 5 from general positive language alone. A 5 requires specific
   positive evidence and no meaningful conflicting evidence.
@@ -399,10 +427,22 @@ Rating scale:
 - Do not penalize content outside the lecture's stated or inferred scope.
 - Do not invent expected supporting details, examples, or topic variants unless
   they are required by the stated or inferred scope.
+- Do not lower Learning Objective Coverage because practice does not span an
+  entire numeric range, every possible variant, or multiple independent examples
+  unless that breadth is explicitly required by an objective. Coverage measures
+  whether the required concept and procedure are taught, not activity quality.
+- Premature answer reveals, weak pauses, and limited learner independence belong
+  to Multimedia Learning Design, Bloom Alignment, or ICAP Alignment. Do not use
+  them against Learning Objective Coverage unless they make the required concept
+  or procedure absent or incomprehensible.
 - Do not use visual quality, learner engagement, or activity design as evidence
   for Learning Objective Coverage unless they directly make required content
   absent or incomprehensible.
 - Distinguish confirmed factual errors from possible accuracy concerns.
+- Do not convert an apparent repeated-digit, equation, operator, acronym, variable,
+  or code-token discrepancy into a confirmed factual error when it appears only in
+  automatic transcript evidence. Treat it as transcription uncertainty unless
+  visible evidence or another independent observation confirms the discrepancy.
 - A high Content Accuracy score requires affirmative evidence that important
   claims are correct. Absence of flagged accuracy issues alone is insufficient.
 - Do not penalize Content Accuracy for omitting advanced caveats, edge cases,
@@ -495,34 +535,54 @@ Rating scale:
 
 - Score only the three assigned metrics.
 - Return metric names exactly as written above.
-- Score 5 when the extracted evidence shows excellent performance for the
-  target audience with no weakness that meaningfully harms that metric.
-- Score 4 when performance is strong but a weakness, artifact, unclear moment,
-  missed opportunity, or conflicting evidence slightly weakens the target
-  learner's experience.
-- If uncertain between 4 and 5, choose 4.
+- Score 5 when the requested criterion is fully satisfied for the target learner.
+  A 5 means excellent for the stated scope, not visually or pedagogically perfect.
+  Harmless imperfections and optional enhancements do not prevent 5.
+- Score 4 when an observed, criterion-relevant weakness slightly reduces otherwise
+  strong performance without impairing learning.
+- Do not lower a score for a merely hypothetical missed opportunity. Require an
+  observed deficiency and explain its direct effect on this metric.
+- If uncertain between 4 and 5, choose 5 when the issue has no meaningful effect
+  on readability, learning support, or instructional flow.
 - If evidence is mixed, choose the lower score that reflects the weakness.
 - Do not assign 5 from general positive language alone. A 5 requires specific
   positive evidence and no meaningful conflicting evidence.
 - Judge Visual Quality from readability, rendering, layout, and technical
   correctness. Do not lower it merely because a useful visual was absent.
-- Visual Quality cannot be 5 if any meaningful visual defect is extracted,
-  including missing spaces, tiny text, overlapping labels, cropped objects, low
-  contrast, unreadable equations, broken rendering, confusing arrows, or
-  mistimed/jumpy animation.
-- If a visual defect blocks understanding, changes meaning, or makes an
-  instructional element hard to trust, Visual Quality should be at most 3.
+- Minor notation, spacing, label-size, or alignment imperfections that remain
+  readable and do not hinder understanding are compatible with Visual Quality 4.
+  They prevent 5 only when they are persistent enough to noticeably reduce polish.
+- A transient overlap, partially drawn Write/Transform state, or fading source and
+  destination captured in one frame is not a finished-layout defect. Penalize it
+  only when consecutive stable evidence shows that it persists.
+- Visual Quality should be at most 3 only when a persistent visual defect
+  noticeably hinders understanding, readability, or trust in an instructional
+  element. One isolated minor defect cannot justify 3 or below.
+- Visual Quality 2 requires multiple persistent major defects, or a substantial
+  portion of the lesson being difficult to read or interpret. Do not assign 2 for
+  several minor defects or for one localized problem in an otherwise usable video.
 - Judge Multimedia Learning Design from alignment, instructional value, timing,
   and missed opportunities. Attractive formatting alone does not prove strong
   multimedia learning design.
-- Multimedia Learning Design cannot be 5 if visuals are mistimed, generic,
-  decorative, distracting, weakly connected to narration, or visually flawed in
-  a way that affects learning.
+- A single premature reveal or small synchronization issue in an otherwise
+  aligned lesson normally supports Multimedia Learning Design 4, not 3.
+- A few localized missing answer displays also support Multimedia Learning Design
+  4 when the narration supplies the correct answers and the learner can still
+  understand the method. They reduce polish and reinforcement, but do not by
+  themselves establish broad instructional failure.
+- Multimedia Learning Design 3 requires repeated failures across distinct key
+  concepts or a consequential mismatch that materially makes the explanation,
+  procedure, or feedback harder to understand. Do not count multiple observations
+  of the same unresolved visual state as multiple independent failures.
 - If a visual defect teaches incorrect information, conflicts with narration, or
   makes a key concept harder to learn, Multimedia Learning Design should be at
   most 3.
 - Judge Logic from sequencing, conceptual connections, transitions, and
   cognitive flow across the complete lecture.
+- Do not lower Logic for factual terminology, visual rendering, answer timing,
+  activity design, or pacing unless it actually disrupts the conceptual sequence
+  or makes the progression difficult to follow. Those concerns belong primarily
+  to their assigned metrics.
 - Do not cap Logic at 4 merely because transitions are mechanically stitched or
   slide-to-slide movement is abrupt. Cap Logic at 4 only when those transitions
   slightly weaken conceptual flow for the target learner.
@@ -613,12 +673,16 @@ Rating scale:
 
 - Score only the three assigned metrics.
 - Return metric names exactly as written above.
-- Score 5 when the extracted evidence shows excellent performance for the
-  target audience with no weakness that meaningfully harms that metric.
-- Score 4 when performance is strong but a weakness, mismatch, brief support,
-  unsupported opportunity, or conflicting evidence slightly weakens the target
-  learner's experience.
-- If uncertain between 4 and 5, choose 4.
+- Score 5 when the requested criterion is fully satisfied for the target learner.
+  A 5 means excellent for the stated scope, not theoretical perfection. Harmless
+  imperfections and optional improvements do not prevent 5.
+- Score 4 when an observed, criterion-relevant weakness slightly reduces otherwise
+  strong performance.
+- Do not lower a score for an unsupported or hypothetical opportunity. Require
+  direct evidence of a mismatch with the provided learner, Bloom target, or ICAP
+  target.
+- If uncertain between 4 and 5, choose 5 when no meaningful target-specific
+  weakness is demonstrated.
 - If evidence is mixed, choose the lower score that reflects the weakness.
 - Do not assign 5 from general positive language alone. A 5 requires specific
   positive evidence and no meaningful conflicting evidence.
@@ -653,6 +717,10 @@ Rating scale:
   prerequisite assumptions, and explanation depth are well matched to the target
   learner. Do not require unnecessary extra detail or modalities when the
   current treatment is sufficient for that learner and scope.
+- A stated focus or attention window is an upper tolerance, not a required video
+  duration. Never lower Learning Adaptation merely because the lesson is shorter
+  than that window. Penalize brevity only when specific required explanations are
+  rushed or inaccessible for the target learner.
 - Learning Adaptation should be 4 when pacing, terminology, examples,
   prerequisite assumptions, or explanation depth slightly weaken accessibility
   for the target learner.
@@ -669,6 +737,10 @@ Rating scale:
   at the instructional moments where that level is relevant. For mixed Bloom
   targets, lower-level setup segments do not prevent a 5 if higher-level
   outcomes are meaningfully supported later.
+- Prematurely displayed answers may reduce the independence of an Apply task and
+  can justify Bloom Alignment 4. Do not also treat the same timing defect as
+  missing objective coverage or poor learner adaptation unless separate evidence
+  demonstrates those failures.
 - If support for the intended Bloom level is present but too brief, optional,
   uneven, or isolated to support the stated objective, Bloom Alignment should be
   at most 4.
@@ -683,6 +755,10 @@ Rating scale:
 - ICAP Alignment can be 5 when the expected engagement level is supported
   repeatedly at meaningful points in the lesson. Engagement does not need to be
   continuous in every segment.
+- When multiple explicit learner prompts are present but one or more answers are
+  revealed too early, ICAP Alignment is usually 4. Use 3 only when premature
+  reveals or weak prompts are so widespread that substantial portions intended
+  to be Active function only as Passive viewing.
 - Rhetorical questions, narrator self-questions, or transitions do not count as
   Active or Constructive unless the learner is explicitly asked to do cognitive
   work.

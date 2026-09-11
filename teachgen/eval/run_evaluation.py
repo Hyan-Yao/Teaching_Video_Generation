@@ -2,12 +2,7 @@ import argparse
 from pathlib import Path
 
 from teachgen.eval.aggregate import aggregate_evaluation
-from teachgen.eval.extractors import (
-    ChunkAnalyzer,
-    ContentExtractor,
-    PedagogyExtractor,
-    VisualMultimediaExtractor,
-)
+from teachgen.eval.extractors import ChunkAnalyzer, shift_chunk_timestamps
 from teachgen.eval.graders import ContentGrader, PedagogyGrader, PresentationGrader
 from teachgen.eval.inference import LectureInferencer, SectionInferencer
 from teachgen.eval.models import EvaluationRequest, GraderOutput, LectureInference, SectionInference
@@ -39,6 +34,7 @@ def run_evaluation(
     request: EvaluationRequest,
     output_dir: Path,
     chunk_seconds: float,
+    frame_interval_seconds: float = 2,
 ) -> Path:
     video_path = Path(request.video_path)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -49,11 +45,7 @@ def run_evaluation(
 
     video_llm = VideoLLM()
     text_llm = TextLLM()
-    chunk_analyzer = ChunkAnalyzer(
-        ContentExtractor(video_llm),
-        VisualMultimediaExtractor(video_llm),
-        PedagogyExtractor(video_llm),
-    )
+    chunk_analyzer = ChunkAnalyzer(video_llm)
     section_inferencer = SectionInferencer(text_llm)
     lecture_inferencer = LectureInferencer(text_llm)
 
@@ -84,7 +76,14 @@ def run_evaluation(
         )
 
         print(f"[run] chunk extraction {chunk_json_path}")
-        analysis = chunk_analyzer.analyze(chunk_video_path, local_chunk)
+        analysis = chunk_analyzer.analyze(
+            chunk_video_path,
+            local_chunk,
+            frame_interval_seconds=frame_interval_seconds,
+            debug_dir=output_dir,
+            authoritative_narration=_authoritative_narration(request),
+        )
+        shift_chunk_timestamps(analysis, chunk.start_time_seconds)
         save_chunk_analysis(analysis, chunk_json_path)
         chunk_analyses.append(analysis)
 
@@ -164,11 +163,26 @@ def run_evaluation(
     return result_path
 
 
+def _authoritative_narration(request: EvaluationRequest) -> str | None:
+    """Extract generated source narration without changing evaluator schemas."""
+    if not request.course_requirement:
+        return None
+    narrations = []
+    for line in request.course_requirement.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("Narration:"):
+            narration = stripped.removeprefix("Narration:").strip()
+            if narration:
+                narrations.append(narration)
+    return "\n".join(narrations) or None
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate an instructional video.")
     parser.add_argument("--video", required=True)
     parser.add_argument("--output", required=True)
-    parser.add_argument("--chunk-seconds", type=float, default=900)
+    parser.add_argument("--chunk-seconds", type=float, default=120)
+    parser.add_argument("--frame-interval-seconds", type=float, default=2)
     parser.add_argument("--course-requirement")
     parser.add_argument("--learning-objective", action="append", dest="learning_objectives")
     parser.add_argument("--student-persona")
@@ -189,6 +203,7 @@ def main() -> None:
         request=request,
         output_dir=Path(args.output),
         chunk_seconds=args.chunk_seconds,
+        frame_interval_seconds=args.frame_interval_seconds,
     )
     print(f"Saved final evaluation to {result_path}")
 

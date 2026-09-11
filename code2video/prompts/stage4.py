@@ -1,7 +1,11 @@
 # MLLM feedback
 
 
-def get_prompt4_layout_feedback(section, position_table):
+def get_prompt4_layout_feedback(section, position_table, current_code=""):
+    numbered_code = "\n".join(
+        f"{index}: {line}"
+        for index, line in enumerate(current_code.splitlines(), start=1)
+    )
     return f"""
 1. ANALYSIS REQUIREMENTS:
 - Analyze this Manim educational video ONLY for animation visual repair issues.
@@ -9,14 +13,21 @@ def get_prompt4_layout_feedback(section, position_table):
 - Focus on eliminating overlaps, obstructions, unreadable labels, bad arrows,
   lingering objects, poor grid use, and mismatch between the current lecture line
   and the visible animation.
-- You will see several sampled frames from the same animation. If ANY sampled
-  frame has overlap, unreadable text, off-screen content, stale old phrases, or
-  a visual/lecture mismatch, set `has_issues` to true and report the worst issue.
+- You will see stable samples taken near the end of storyboard steps. Judge
+  persistent states, not normal in-progress drawing. A partially drawn `Write`
+  is not a defect unless it remains incomplete in consecutive stable samples.
+- Minor cosmetic imperfections are acceptable. Request repair only when a major
+  or blocker issue persists across stable samples and harms meaning/readability.
 
 2. Content Context:
 - Title: {section.title}
 - Lecture Lines: {'; '.join(section.lecture_lines)}
+- Storyboard step timing windows: {section.step_timings}
 - Current Grid Occupancy: {position_table}
+- Current numbered Manim code:
+```python
+{numbered_code}
+```
 
 3. Visual Anchor System (6*6 grid, right side only):
 ```
@@ -57,12 +68,23 @@ lecture |  A1  A2  A3  A4  A5  A6
 {{
     "layout": {{
         "has_issues": true,
+        "severity": "major",
+        "persistent": true,
+        "summary": "concise evidence-based finding",
         "improvements": [
             {{
-                "problem": "Specific issue description (concise)",
-                "solution": "Line X: self.place_at_grid(...) / self.place_in_area(...) / self.play(FadeOut(...)) / self.remove(...)",
-                "line_number": X,
-                "object_affected": "obj_name"
+                "action": "replace_placement",
+                "line_number": 42,
+                "object_name": "obj_name",
+                "object_names": [],
+                "method": "place_at_grid",
+                "grid_position": "C3",
+                "top_left": null,
+                "bottom_right": null,
+                "scale_factor": 0.75,
+                "z_index": null,
+                "style_attribute": null,
+                "style_value": null
             }},
             ...
         ]
@@ -70,6 +92,11 @@ lecture |  A1  A2  A3  A4  A5  A6
 }}
 
 7. SOLUTION REQUIREMENTS:
+- Set severity to one of "minor", "major", or "blocker". Use major/blocker for
+  overlap, unreadable content, off-screen content, stale objects that obscure the
+  current step, or a visible state that communicates the wrong relationship.
+- Set has_issues=false for no issue or minor-only issues. Set persistent=true only
+  when the same defect remains in consecutive stable states.
 - Provide specific grid coordinates in solutions
 - List up to 3 layout problems that most affect the visual experience!
 - Always include overlap or text collision as a top-priority problem when visible
@@ -80,6 +107,19 @@ lecture |  A1  A2  A3  A4  A5  A6
 - Prefer line-specific fixes to `place_at_grid(...)`, `place_in_area(...)`, scale
   factors, font sizes, and object fadeout/cleanup. Do not suggest rewriting the
   whole scene unless the layout cannot be repaired locally.
+- Allowed action values only: replace_placement, insert_cleanup, replace_write,
+  set_z_index, update_style. Every action is one local edit tied to an existing
+  line number. Do not return free-form solutions or rewritten code.
+- insert_cleanup uses method fade_out or remove and object_names. replace_write
+  uses object_name. set_z_index uses object_name and z_index. update_style uses
+  object_name, style_attribute (font_size or color), and style_value.
+- For set_z_index, identify the object's creation line; the setter is inserted
+  immediately after it. For update_style, identify an existing declaration line
+  that already contains the named font_size or color argument.
+- A place_at_grid/place_in_area solution must name the line of the existing
+  placement call being replaced, not the object's creation line.
+- A FadeOut/remove cleanup solution must name the first existing line before
+  which that cleanup should be inserted.
 - For stale old text or shapes, give a precise cleanup solution such as
   `Line X: self.play(FadeOut(old_label), FadeOut(old_arrow))` or
   `Line X: self.remove(old_label, old_arrow)`. Only target right-side animation

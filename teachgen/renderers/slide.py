@@ -17,7 +17,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from ..schema import Modality, Segment, VisualAsset
+from ..schema import Modality, Segment, SlideSpec, VisualAsset
 from .base import RenderContext
 from .. import make_slide  # the standalone helper, now a teachgen module
 
@@ -33,18 +33,24 @@ WHITE = (0xFF, 0xFF, 0xFF)
 W, H = 1920, 1080
 
 SYSTEM = """\
-You turn a visual brief into the text of ONE teaching slide, using this exact format:
+Convert one visual brief into a concise deterministic teaching-slide specification.
 
-Title: <a short slide headline>
-- <bullet point, <= 12 words>
-- <bullet point>
-- <up to 5 bullets total>
-Diagram: <A> | <B> | <C>
+Use one of these layouts:
+- none: title and bullets only.
+- pipeline: 2-4 ordered nodes connected left-to-right. This is a sequence, never A+B=C.
+- comparison: two titled columns with up to four short items each.
+- cells: one exact row of up to 12 symbols or values, such as an 8-bit register.
 
 Rules:
-- The Title line is required. 2-5 bullets. Use **bold** to lead a key term.
-- Include the Diagram line ONLY if a 3-stage "A + B = C" relationship genuinely fits;
-  otherwise omit it entirely. Output only the slide text, no preamble, no code fences.
+- Keep the title short and use at most five bullets of at most 12 words each.
+- Copy required equations, code, bit strings, labels, and numeric values exactly.
+- Never invent a relationship merely to fill a diagram.
+- Do not use Markdown, checkbox glyphs, emoji, superscript glyphs, or decorative symbols.
+- Prefer plain ASCII notation such as 2^3.
+- The slide remains visible for the entire segment. If narration explicitly asks the
+  learner to pause, calculate, predict, choose, or answer and then gives the solution,
+  render only the problem setup. Do not include the answer, completed calculation,
+  highlighted result, or solution state anywhere on that static slide.
 """
 
 
@@ -52,22 +58,40 @@ class SlideRenderer:
     modality = Modality.SLIDE
 
     def render(self, seg: Segment, ctx: RenderContext) -> VisualAsset:
-        slide_text = ctx.provider.chat(
-            f"Visual brief: {seg.visual_brief}\n\nNarration (for context): {seg.narration}",
+        spec = ctx.provider.chat_json(
+            f"Visual brief: {seg.visual_brief}\n\nNarration (for timing and context): "
+            f"{seg.narration}\n\nRemember that this is one static image shown for "
+            "the full narration. An explicit learner prompt must not display its later "
+            "answer early.",
+            SlideSpec,
             system=SYSTEM,
-            max_tokens=600,
+            max_tokens=1000,
             model=ctx.cfg.models.visual_text,
         )
-        title, bullets, diagram = make_slide.parse_input(slide_text)
+        spec = _validate_slide_spec(spec)
 
         png_path = ctx.out_dir / f"{seg.id}.png"
-        _draw_slide(title, bullets, diagram, make_slide.split_bold, png_path)
-        return VisualAsset(segment_id=seg.id, kind="image", path=str(png_path))
+        _draw_slide(spec, png_path)
+        spec_path = ctx.out_dir / f"{seg.id}.slide.json"
+        spec_path.write_text(spec.model_dump_json(indent=2), encoding="utf-8")
+        debug_dir = ctx.cfg.run_dir / "slide_debug" / seg.id / f"round_{ctx.render_round}"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        (debug_dir / "slide_spec.json").write_text(
+            spec.model_dump_json(indent=2), encoding="utf-8"
+        )
+        return VisualAsset(
+            segment_id=seg.id,
+            kind="image",
+            path=str(png_path),
+            intended_modality=seg.modality,
+            rendered_modality=Modality.SLIDE,
+            validation_status="passed",
+        )
 
 
 # --------------------------------------------------------------------- drawing
-def _draw_slide(title, bullets, diagram, split_bold, out_path: Path) -> None:
-    title = title.replace("**", "")  # title isn't bold-parsed; drop any stray markers
+def _draw_slide(spec: SlideSpec, out_path: Path) -> None:
+    title = spec.title.replace("**", "")
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
 
@@ -93,21 +117,25 @@ def _draw_slide(title, bullets, diagram, split_bold, out_path: Path) -> None:
     y += 60
 
     # bullets
-    has_diagram = bool(diagram)
+    has_diagram = spec.layout != "none"
     bullets_bottom = (H - 360) if has_diagram else (H - 120)
     line_h = int(bullet_font.size * 1.55)
-    for b in bullets:
+    for b in spec.bullets:
         if y > bullets_bottom:
             break
         d.ellipse([margin, y + 14, margin + 18, y + 32], fill=NAVY)
-        _draw_runs(d, margin + 44, y, b, split_bold, bullet_font, bullet_bold,
+        _draw_runs(d, margin + 44, y, b, make_slide.split_bold, bullet_font, bullet_bold,
                    W - margin - 44, line_h)
         # advance by however many wrapped lines the bullet took
         n_lines = max(1, len(_wrap(_plain(b), bullet_font, W - margin - 44, d)))
         y += line_h * n_lines + 16
 
-    if has_diagram:
-        _draw_diagram(d, diagram)
+    if spec.layout == "pipeline":
+        _draw_pipeline(d, spec.pipeline_nodes, spec.caption)
+    elif spec.layout == "comparison":
+        _draw_comparison(d, spec)
+    elif spec.layout == "cells":
+        _draw_cells(d, spec.cells, spec.cells_label, spec.caption)
 
     img.save(out_path, format="PNG")
 
@@ -130,31 +158,88 @@ def _draw_runs(d, x, y, text, split_bold, font, bold_font, max_w, line_h):
             cur_x += w
 
 
-def _draw_diagram(d, nodes):
-    labels = (list(nodes) + ["Input", "Process", "Output"])[:3]
-    cy = H - 300
-    r = 95
-    # node A (navy)
-    ax = 320
-    d.ellipse([ax - r, cy - r, ax + r, cy + r], fill=WHITE, outline=NAVY, width=6)
-    _centered(d, _initials(labels[0]), _font(70, bold=True), ax, cy, NAVY)
-    _centered(d, labels[0], _font(34, bold=True), ax, cy + r + 40, NAVY)
-    # plus
-    _centered(d, "+", _font(70, bold=True), ax + 230, cy, MOSS)
-    # node B (moss)
-    bx = ax + 460
-    d.ellipse([bx - r, cy - r, bx + r, cy + r], fill=WHITE, outline=MOSS, width=6)
-    _centered(d, _initials(labels[1]), _font(70, bold=True), bx, cy, MOSS)
-    _centered(d, labels[1], _font(34, bold=True), bx, cy + r + 40, MOSS)
-    # arrow
-    ax2 = bx + 200
-    d.line([(ax2, cy), (ax2 + 130, cy)], fill=NAVY, width=8)
-    d.polygon([(ax2 + 130, cy - 18), (ax2 + 175, cy), (ax2 + 130, cy + 18)], fill=NAVY)
-    # result box (accent)
-    rx0 = ax2 + 210
-    d.rounded_rectangle([rx0, cy - 95, rx0 + 560, cy + 95], radius=18,
-                        fill=ACCENT_BG, outline=ACCENT, width=5)
-    _centered(d, labels[2], _font(48, bold=True), rx0 + 280, cy, ACCENT)
+def _draw_pipeline(d, nodes, caption):
+    if len(nodes) < 2:
+        return
+    count = len(nodes)
+    left, right, cy = 180, W - 180, H - 245
+    gap = 70
+    box_w = int((right - left - gap * (count - 1)) / count)
+    for index, label in enumerate(nodes):
+        x0 = left + index * (box_w + gap)
+        x1 = x0 + box_w
+        d.rounded_rectangle([x0, cy - 75, x1, cy + 75], radius=15,
+                            fill=ACCENT_BG, outline=ACCENT, width=5)
+        font = _fit_font(d, label, box_w - 30, 42, bold=True)
+        _centered(d, label, font, (x0 + x1) / 2, cy, NAVY)
+        if index < count - 1:
+            start, end = x1 + 12, x1 + gap - 12
+            d.line([(start, cy), (end, cy)], fill=MOSS, width=7)
+            d.polygon([(end - 18, cy - 14), (end, cy), (end - 18, cy + 14)], fill=MOSS)
+    if caption:
+        _centered(d, caption, _fit_font(d, caption, W - 300, 32), W / 2, H - 95, INK)
+
+
+def _draw_comparison(d, spec: SlideSpec):
+    top, bottom = H - 390, H - 90
+    columns = [(150, W // 2 - 35, spec.left_title, spec.left_items, NAVY),
+               (W // 2 + 35, W - 150, spec.right_title, spec.right_items, MOSS)]
+    for x0, x1, title, items, color in columns:
+        d.rounded_rectangle([x0, top, x1, bottom], radius=16,
+                            fill=WHITE, outline=color, width=5)
+        _centered(d, title, _fit_font(d, title, x1 - x0 - 40, 38, bold=True),
+                  (x0 + x1) / 2, top + 50, color)
+        y = top + 105
+        for item in items:
+            d.ellipse([x0 + 32, y + 10, x0 + 47, y + 25], fill=color)
+            d.text((x0 + 65, y), item, font=_fit_font(d, item, x1 - x0 - 100, 30), fill=INK)
+            y += 50
+
+
+def _draw_cells(d, cells, label, caption):
+    if not cells:
+        return
+    left, right, cy = 210, W - 210, H - 245
+    cell_w = min(150, int((right - left) / len(cells)))
+    total_w = cell_w * len(cells)
+    x0 = int((W - total_w) / 2)
+    for index, value in enumerate(cells):
+        xa = x0 + index * cell_w
+        d.rounded_rectangle([xa, cy - 70, xa + cell_w - 6, cy + 70], radius=10,
+                            fill=WHITE, outline=NAVY, width=5)
+        _centered(d, value, _fit_font(d, value, cell_w - 24, 58, bold=True),
+                  xa + (cell_w - 6) / 2, cy, NAVY)
+    if label:
+        _centered(d, label, _fit_font(d, label, W - 300, 34, bold=True), W / 2, cy - 115, MOSS)
+    if caption:
+        _centered(d, caption, _fit_font(d, caption, W - 300, 32), W / 2, H - 80, INK)
+
+
+def _fit_font(d, text, max_width, start_size, *, bold=False):
+    size = start_size
+    while size > 18 and d.textlength(text, font=_font(size, bold=bold)) > max_width:
+        size -= 2
+    return _font(size, bold=bold)
+
+
+def _validate_slide_spec(spec: SlideSpec) -> SlideSpec:
+    values = [spec.title, *spec.bullets, *spec.pipeline_nodes, spec.left_title,
+              *spec.left_items, spec.right_title, *spec.right_items, *spec.cells,
+              spec.cells_label, spec.caption]
+    for value in values:
+        if value.count("**") % 2:
+            raise ValueError("slide text contains unpaired Markdown emphasis")
+        if any(char in value for char in ("\ufffd", "\u25a1", "\u2610")):
+            raise ValueError("slide text contains an unsupported placeholder glyph")
+        if any(ord(char) < 32 and char not in "\n\t" for char in value):
+            raise ValueError("slide text contains unsupported control characters")
+    if spec.layout == "pipeline" and not 2 <= len(spec.pipeline_nodes) <= 4:
+        raise ValueError("pipeline slides require 2-4 nodes")
+    if spec.layout == "comparison" and not (spec.left_title and spec.right_title):
+        raise ValueError("comparison slides require two column titles")
+    if spec.layout == "cells" and not spec.cells:
+        raise ValueError("cells slides require at least one cell")
+    return spec
 
 
 # ----------------------------------------------------------------------- utils

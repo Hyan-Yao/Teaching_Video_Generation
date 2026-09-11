@@ -47,12 +47,16 @@ cli → pipeline ──┬─ planner:  content_writer → route ─────
                                              feedback-mode=evaluator
                                                evaluator → outer_repair_decider
                                                           ├─ plan → lesson_plan_refiner
-                                                          └─ asset → evaluation_adapter → router
+                                                          ├─ asset → evaluation_adapter → router
+                                                          └─ exactly one repair class per round
 ```
 
 Everything generative (text, structured, vision, TTS, image) goes through one
 `Provider` (`providers/openai_provider.py`) — that is why a single key suffices.
-Vision review samples frames from the mp4 (OpenAI can't ingest video directly).
+TeachGen is OpenAI-only: set `OPENAI_API_KEY`; no OpenRouter or Gemini key is
+required. All text/code and vision prompts default to `gpt-5.6-sol`.
+Vision review samples timestamped frames from the mp4 because GPT-5.6 Sol
+accepts image inputs, not raw video inputs.
 
 ## Refinement loops
 
@@ -62,8 +66,15 @@ There are now two evaluator-driven refinement stages in the system.
   generation. It grades the `LessonPlan` against the structured request and can rewrite
   the plan before rendering starts.
 - **Outer video refiner** (`--feedback-mode evaluator`): runs after each draft video is
-  composed. It uses the full-video evaluator to decide whether the next repair should
-  be a full lesson-plan revision or a targeted asset/segment repair.
+  composed. It classifies the actual cause of each finding, then performs one repair
+  class per round. Plan repairs run before asset repairs so visual feedback from an
+  old video is never applied after the lesson structure changes.
+
+Post-render plan repair preserves each existing segment's modality, visual brief,
+ID, and order, edits only evidence-identified segments, and enforces narration-growth
+limits. Asset repairs preserve narration so a visual fix cannot reduce objective
+coverage. Every candidate round is evaluated; `final.mp4` is selected from the best
+safe draft rather than assumed to be the last draft.
 
 Phase 2 runs an **outer loop** (default ≤ 3 rounds) that drives two **inner loops**
 based on what the reviewer finds wrong. Rounds stop early once `overall_score ≥
@@ -114,7 +125,9 @@ runs/<topic>/asset_review_r0.json
 runs/<topic>/outer_repair_decision_r0.json
 runs/<topic>/outer_plan_feedback_r0.json
 runs/<topic>/outer_lesson_plan_refined_r1.json
-runs/<topic>/outer_plan_eval_after_r1.json
+runs/<topic>/round_manifest.json
+runs/<topic>/selection.json
+runs/<topic>/evaluator_final/evaluation_result.json
 ```
 
 To also run the evaluator on the final produced video after refinement:
@@ -122,6 +135,34 @@ To also run the evaluator on the final produced video after refinement:
 ```bash
 python -m teachgen --request-json examples/regression_request.json --feedback-mode evaluator --eval-baseline
 ```
+
+The evaluator splits videos into 120-second chunks by default. For each chunk it
+extracts audio, obtains a timestamped Whisper transcript, samples a frame every two
+seconds, and sends both evidence streams to GPT-5.6 Sol in one structured extraction call.
+Override these values with `--eval-chunk-seconds` and
+`--eval-frame-interval-seconds`. GPT-5.6 Sol receives chunk-local timestamps, while saved
+evidence is normalized to full-video timestamps before repair routing.
+For generated videos, the planned narration is also supplied as a symbol-only
+reference so Whisper collapsing repeated digits or equations does not become a
+false Content Accuracy defect.
+
+In `code2video_critic` animation mode, storyboard steps receive synthesized-audio
+word timings. The critic samples settled states near the end of each step and ignores
+minor or transient drawing artifacts. One structured local grid/cleanup/style edit
+may be applied, re-rendered, and reviewed again before acceptance; unresolved animations use the existing
+`animation -> concept_image -> slide` fallback. Round-specific code, feedback,
+and before/after clips are saved under
+`runs/<topic>/animation_debug/<segment>/round_<n>/`.
+
+Concept-image fallbacks receive one factual/readability vision check and one retry.
+Images that still contain major errors fall back to a deterministic Pillow slide.
+The lesson plan keeps the intended modality; each `assets/<segment>.asset.json`
+records the renderer actually used, validation state, and fallback reason.
+
+Run directories are write-once by default. Choose a new `--run-dir` for a fresh
+experiment, or pass `--resume` to reuse only assets whose saved narration/segment
+signatures still match. `--refinement-patience 1` stops after the first evaluated
+round that does not improve the selected draft.
 
 Final evaluator report outputs:
 
@@ -131,6 +172,8 @@ runs/<topic>/evaluator_baseline/content_grades.json
 runs/<topic>/evaluator_baseline/presentation_grades.json
 runs/<topic>/evaluator_baseline/pedagogy_grades.json
 runs/<topic>/evaluator_baseline/lecture.json
+runs/<topic>/evaluator_baseline/transcripts/chunk_000.json
+runs/<topic>/evaluator_baseline/frame_manifests/chunk_000.json
 ```
 
 For plan-only evaluation before rendering:
@@ -158,8 +201,8 @@ runs/<topic>/lesson_plan_refined_r1.json
 
 - `animation` drives code2video at **single-segment grain** (teachgen owns the
   outline, so its top-level `GENERATE_VIDEO` is bypassed). code2video's LLM calls are
-  shimmed through teachgen's Provider, so the run stays single-key; its own Gemini
-  video-feedback loop is disabled and teachgen's reviewer covers holistic feedback.
+  shimmed through teachgen's OpenAI Provider, so code generation, grid critique, and
+  code repair all use the configured GPT-5.6 Sol model with a single key.
 - `slide` rasterizes straight to PNG via Pillow (make_slide's palette + parsing),
   so **no LibreOffice/poppler** is needed.
 - **Slides are reserved for the final recap.** `planner/route.py` enforces it: any
@@ -180,8 +223,10 @@ The pipeline, compositor, and feedback loop don't change.
 | Flag | Default | Effect |
 |---|---|---|
 | `--no-feedback` | off | Skip the entire feedback loop |
-| `--max-rounds N` | 3 | Cap on outer loop iterations |
+| `--max-rounds N` | 3 | Maximum number of refinement rounds after `draft_r0` |
 | `--score-threshold F` | 8.0 | Stop early when `overall_score ≥ F` |
+| `--refinement-patience N` | 1 | Stop after N consecutive non-improving evaluated rounds |
+| `--resume` | off | Continue a matching interrupted run and reuse valid cached media |
 
 ## Requirements
 
@@ -200,7 +245,7 @@ teachgen/
   cli.py / config.py / schema.py / pipeline.py / mpcompat.py
   make_slide.py        slide text -> (title, bullets, diagram); reused by the slide renderer
   concept_image.py     concept -> image-prompt helper; reused by the concept_image renderer
-  providers/   base + openai_provider (default) + gemini_provider (stub)
+  providers/   base + openai_provider
   planner/     content_writer (narration) + route (modality routing)
   renderers/   base + slide + concept_image + animation
   audio/       narrator (TTS + word timings)

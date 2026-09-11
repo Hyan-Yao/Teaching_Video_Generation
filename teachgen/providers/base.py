@@ -41,7 +41,13 @@ class Provider(Protocol):
         ...
 
     def vision(
-        self, prompt: str, images: list[bytes], *, system: str = "", max_tokens: int = 4000
+        self,
+        prompt: str,
+        images: list[bytes],
+        *,
+        system: str = "",
+        max_tokens: int = 4000,
+        model: str | None = None,
     ) -> str:
         """Multimodal: prompt + a list of image bytes (e.g. sampled video frames)."""
         ...

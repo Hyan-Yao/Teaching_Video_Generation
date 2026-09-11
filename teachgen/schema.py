@@ -101,6 +101,66 @@ class VisualAsset(BaseModel):
     duration: Optional[float] = Field(
         None, description="Set for video; None for image (driven by narration audio)"
     )
+    intended_modality: Optional[Modality] = None
+    rendered_modality: Optional[Modality] = None
+    fallback_reason: Optional[str] = None
+    validation_status: Optional[
+        Literal["not_run", "passed", "passed_with_minor_issues", "failed"]
+    ] = None
+
+
+class AnimationRepairAction(BaseModel):
+    """One bounded source-code edit emitted by the animation visual critic."""
+
+    action: Literal[
+        "replace_placement",
+        "insert_cleanup",
+        "replace_write",
+        "set_z_index",
+        "update_style",
+    ]
+    line_number: int = Field(ge=1)
+    object_name: str = ""
+    object_names: list[str] = Field(default_factory=list)
+    method: Literal["place_at_grid", "place_in_area", "fade_out", "remove"] | None = None
+    grid_position: str | None = None
+    top_left: str | None = None
+    bottom_right: str | None = None
+    scale_factor: float | None = None
+    z_index: int | None = None
+    style_attribute: Literal["font_size", "color"] | None = None
+    style_value: str | float | int | None = None
+
+
+class AnimationCritique(BaseModel):
+    has_issues: bool = False
+    severity: Literal["minor", "major", "blocker"] = "minor"
+    persistent: bool = False
+    summary: str = ""
+    repairs: list[AnimationRepairAction] = Field(default_factory=list)
+
+
+class ConceptImageValidation(BaseModel):
+    has_major_issues: bool = False
+    severity: Literal["minor", "major", "blocker"] = "minor"
+    issues: list[str] = Field(default_factory=list)
+    summary: str = ""
+
+
+class SlideSpec(BaseModel):
+    """Deterministic, renderer-neutral content for one teaching slide."""
+
+    title: str
+    bullets: list[str] = Field(default_factory=list, max_length=5)
+    layout: Literal["none", "pipeline", "comparison", "cells"] = "none"
+    pipeline_nodes: list[str] = Field(default_factory=list, max_length=4)
+    left_title: str = ""
+    left_items: list[str] = Field(default_factory=list, max_length=4)
+    right_title: str = ""
+    right_items: list[str] = Field(default_factory=list, max_length=4)
+    cells: list[str] = Field(default_factory=list, max_length=12)
+    cells_label: str = ""
+    caption: str = ""
 
 
 class WordTiming(BaseModel):
@@ -124,6 +184,9 @@ class Critique(BaseModel):
     issue: str
     fix_action: Literal["change_modality", "rewrite_narration", "re_render", "adjust_timing"]
     detail: str = ""
+    repair_scope: Literal["plan", "asset", "timing"] = "asset"
+    cause: Literal["narration", "visual", "sequence", "rendering"] = "rendering"
+    source_metric: str = ""
 
 
 class ReviewResult(BaseModel):

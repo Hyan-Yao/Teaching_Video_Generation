@@ -29,6 +29,11 @@ class _RepairCandidate(BaseModel):
     fix_action: Literal["change_modality", "rewrite_narration", "re_render", "adjust_timing"]
     detail: str = ""
     source_metric: str
+    repair_scope: Literal["plan", "asset", "timing"] = "asset"
+    cause: Literal["narration", "visual", "sequence", "rendering"] = "rendering"
+    persistent_across_stable_frames: bool = False
+    hard_renderer_failure: bool = False
+    animation_still_instructionally_useful: bool = True
 
 
 class _RepairPlan(BaseModel):
@@ -46,6 +51,14 @@ Only create repair candidates for problems that are:
 1. supported by timestamped evidence,
 2. important enough to change the video,
 3. likely repairable by one existing router action.
+
+For animation appearance problems, set persistent_across_stable_frames=true only
+when the evidence confirms the defect in at least two stable-state samples or in
+a clearly settled final state. Never mark a transition-only observation as
+persistent. Set hard_renderer_failure=true only for an actual failed, missing,
+unreadable, or unusable render, not for an aesthetic weakness. Set
+animation_still_instructionally_useful=true when movement, staged explanation,
+or a timed reveal contributes to learning.
 
 Preserve the lesson plan's instructional meaning. Required content comes from
 the request, objectives, key learning points, target segment narration, and
@@ -65,12 +78,21 @@ Available router actions:
 - change_modality: the segment's visual modality or visual approach is wrong.
 - adjust_timing: pacing, duration, or audio-visual synchronization is wrong.
 
+For every candidate classify the actual cause and repair scope. Metric names do
+not determine scope:
+- narration, missing objective depth, or instructional sequence -> plan
+- incorrect/malformed/cluttered visual or renderer failure -> asset
+- synchronization/reveal timing -> timing
+A Content Accuracy or Learning Adaptation finding caused by a wrong visual is an
+asset repair. Do not rewrite narration to compensate for a rendering defect.
+
 For broken, messy, unreadable, cramped, mistimed, or narration-mismatched
 animations, prefer re_render when the animation approach is still instructionally
 appropriate. The animation renderer may run a visual critic/grid-repair loop.
-Use change_modality only when the visual approach is fundamentally wrong, the
-animation would need to become more complex, or a prior animation repair already
-failed.
+Do not request change_modality merely because a previous repair attempt failed.
+Use change_modality only when the visual approach is fundamentally wrong and
+movement contributes no instructional value. Timed demonstrations and answer
+reveals should remain animations.
 
 For scores 1-2, usually create repair candidates unless the evidence is not
 actionable. For score 3, be selective: create a candidate only for clear,
@@ -97,6 +119,8 @@ def adapt_evaluation_to_review(
             json.dumps([interval.model_dump() for interval in timeline], indent=2),
             encoding="utf-8",
         )
+    _enforce_asset_repair_scope(repair_plan)
+    _normalize_repair_causes(repair_plan, timeline, plan)
     _apply_animation_visual_repair_policy(provider, repair_plan, timeline, plan)
     if debug_dir is not None:
         (debug_dir / "repair_plan.json").write_text(
@@ -113,6 +137,9 @@ def adapt_evaluation_to_review(
                 issue=candidate.issue,
                 fix_action=candidate.fix_action,
                 detail=_format_detail(candidate),
+                repair_scope=candidate.repair_scope,
+                cause=candidate.cause,
+                source_metric=candidate.source_metric,
             )
         )
 
@@ -121,6 +148,60 @@ def adapt_evaluation_to_review(
         overall_score=result.overall_score * 2,
         summary=repair_plan.summary or result.summary,
     )
+
+
+def _enforce_asset_repair_scope(repair_plan: _RepairPlan) -> None:
+    """Asset-caused findings may redesign assets but cannot rewrite narration."""
+    for candidate in repair_plan.candidates:
+        if candidate.repair_scope != "asset" and candidate.cause not in {"visual", "rendering"}:
+            continue
+        if candidate.fix_action != "rewrite_narration":
+            continue
+        candidate.fix_action = "re_render"
+        candidate.detail = (
+            f"{candidate.detail} Asset-scope policy: preserve narration and repair "
+            "the supporting visual brief/render instead."
+        ).strip()
+
+
+def _normalize_repair_causes(
+    repair_plan: _RepairPlan,
+    timeline: list[_SegmentInterval],
+    plan: LessonPlan,
+) -> None:
+    """Enforce scope from the observed cause and target modality."""
+    by_id = {segment.id: segment for segment in plan.segments}
+    for candidate in repair_plan.candidates:
+        is_timing_issue = (
+            candidate.repair_scope == "timing" or candidate.fix_action == "adjust_timing"
+        )
+        if candidate.cause in {"visual", "rendering"}:
+            candidate.repair_scope = "asset"
+            if candidate.fix_action == "rewrite_narration":
+                candidate.fix_action = "re_render"
+        elif candidate.cause in {"narration", "sequence"}:
+            candidate.repair_scope = "plan"
+            candidate.fix_action = "rewrite_narration"
+
+        if not is_timing_issue:
+            continue
+        segment_id = resolve_candidate_segment(plan, timeline, candidate)
+        segment = by_id.get(segment_id) if segment_id else None
+        if segment is not None and segment.modality == Modality.ANIMATION:
+            candidate.repair_scope = "asset"
+            candidate.cause = "rendering"
+            candidate.fix_action = "re_render"
+        else:
+            # Preserve timed visual behavior by moving a static asset to animation.
+            # Narration and lesson structure remain unchanged.
+            candidate.repair_scope = "timing"
+            candidate.cause = "rendering"
+            candidate.fix_action = "change_modality"
+            candidate.detail = (
+                f"{candidate.detail} A static renderer cannot reveal information "
+                "later. Preserve the narration and implement separate prompt and "
+                "reveal states as an animation."
+            ).strip()
 
 
 def build_segment_timeline(
@@ -384,6 +465,7 @@ def _plan_repairs(
         "Evaluator scores and evidence:\n\n"
         f"{_format_scores(result.scores)}\n\n"
         "Return only repair candidates the current router can act on. "
+        "Classify repair_scope and cause from the evidence, not the metric name. "
         "Each candidate detail should explain the defect to fix, the required "
         "instructional concept to preserve from the narration/request, and how "
         "the visual can be simplified if the old visual brief caused clutter. "
@@ -393,7 +475,9 @@ def _plan_repairs(
         "rendering defects, prefer re_render when the same animation approach is "
         "still appropriate, so the animation critic/grid-repair loop can try to "
         "fix the rendered segment. Prefer change_modality only when the animation "
-        "approach itself is wrong or too complex."
+        "approach itself is wrong and movement has no instructional value. Mark "
+        "persistent_across_stable_frames true only for defects confirmed in two "
+        "stable samples or a settled final state."
     )
     repair_plan = provider.chat_json(
         prompt,
@@ -418,57 +502,39 @@ def _apply_animation_visual_repair_policy(
     timeline: list[_SegmentInterval],
     plan: LessonPlan,
 ) -> None:
-    """Give bad animations one critic-loop repair before falling back."""
+    """Preserve useful animations and reject transition-only repair requests."""
     by_id = {segment.id: segment for segment in plan.segments}
-    visual_metrics = {
-        "visual quality",
-        "visual_quality",
-        "multimedia learning design",
-        "multimedia_learning_design",
-    }
-    fallback_severities = {"major", "blocker"}
-    cfg = getattr(provider, "cfg", None)
-    policy = getattr(cfg, "animation_repair_policy", "critic_first")
-    critic_enabled = getattr(cfg, "animation_mode", "basic") == "code2video_critic"
-
     for candidate in repair_plan.candidates:
-        if candidate.source_metric.strip().casefold() not in visual_metrics:
+        if candidate.repair_scope != "asset" or candidate.cause not in {"visual", "rendering"}:
             continue
-        if candidate.severity not in fallback_severities:
-            continue
-
         segment_id = resolve_candidate_segment(plan, timeline, candidate)
         segment = by_id.get(segment_id) if segment_id else None
         if segment is None or segment.modality != Modality.ANIMATION:
             continue
 
-        repair_attempts = int(segment.hints.get("animation_critic_repair_attempts", 0))
-        should_try_critic = (
-            policy == "critic_first"
-            and critic_enabled
-            and repair_attempts < 1
-        )
-
-        if should_try_critic:
-            if candidate.fix_action != "re_render":
-                candidate.detail = (
-                    f"{candidate.detail} "
-                    "Deterministic policy override: major/blocker visual issue on "
-                    "an animation segment, so retry animation once with the "
-                    "Code2Video visual critic/grid repair loop before falling back "
-                    "to a static modality."
-                ).strip()
-            candidate.fix_action = "re_render"
+        if (
+            candidate.severity in {"major", "blocker"}
+            and not candidate.persistent_across_stable_frames
+            and not candidate.hard_renderer_failure
+        ):
+            candidate.severity = "minor"
+            candidate.detail = (
+                f"{candidate.detail} Animation preservation policy: the defect was "
+                "not confirmed across stable frames, so keep the accepted animation."
+            ).strip()
             continue
 
-        if candidate.fix_action != "change_modality":
+        if (
+            candidate.fix_action == "change_modality"
+            and candidate.animation_still_instructionally_useful
+            and not candidate.hard_renderer_failure
+        ):
             candidate.detail = (
                 f"{candidate.detail} "
-                "Deterministic policy override: major/blocker visual issue on "
-                "an animation segment after critic repair was unavailable or already "
-                "attempted, so fallback to concept_image instead of retrying animation."
+                "Animation preservation policy: movement remains instructionally "
+                "useful, so repair or regenerate the animation without changing modality."
             ).strip()
-        candidate.fix_action = "change_modality"
+            candidate.fix_action = "re_render"
 
 
 def _format_plan_context(plan: LessonPlan) -> str:

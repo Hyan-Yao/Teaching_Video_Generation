@@ -2,8 +2,8 @@
 
 Every model call (text, structured, vision, TTS, image) goes through a Provider.
 The default OpenAIProvider routes everything through OpenAI so a single
-OPENAI_API_KEY is all the user needs. Alternate backends implement the same
-Protocol and are otherwise invisible to the rest of the system.
+OPENAI_API_KEY is all the user needs. TeachGen currently supports the OpenAI
+backend only.
 """
 
 from __future__ import annotations
@@ -13,15 +13,9 @@ from .base import Provider
 
 
 def get_provider(cfg: Config) -> Provider:
-    if cfg.provider == "openai":
-        from .openai_provider import OpenAIProvider
+    from .openai_provider import OpenAIProvider
 
-        return OpenAIProvider(cfg)
-    if cfg.provider == "gemini":
-        from .gemini_provider import GeminiProvider
-
-        return GeminiProvider(cfg)
-    raise ValueError(f"unknown provider: {cfg.provider!r}")
+    return OpenAIProvider(cfg)
 
 
 __all__ = ["Provider", "get_provider"]

@@ -16,11 +16,11 @@ from .schema import TeachingRequest
 class ModelConfig:
     """Which concrete models the default OpenAI provider should use."""
 
-    text: str = "gpt-5"             # planning, content writing, routing
-    refinement_text: str = "gpt-5"  # plan/repair/refinement LLM calls only
-    vision: str = "gpt-5"           # MLLM reviewer (reads sampled video frames)
-    visual_text: str = "gpt-4o"     # slide/image prompts + code2video animation code
-    animation_code: str = "~anthropic/claude-opus-latest"  # Code2Video Manim code via OpenRouter
+    text: str = "gpt-5.6-sol"             # planning, content writing, routing
+    refinement_text: str = "gpt-5.6-sol"  # plan/repair/refinement LLM calls only
+    vision: str = "gpt-5.6-sol"           # MLLM reviewer (reads sampled video frames)
+    visual_text: str = "gpt-5.6-sol"      # slide/image prompts + first-pass animation code
+    animation_code: str = "gpt-5.6-sol"   # Code2Video Manim code + visual repair
     tts: str = "gpt-4o-mini-tts"    # narration synthesis
     transcribe: str = "whisper-1"   # word-level timestamps for A/V alignment
     image: str = "gpt-image-2"      # concept_image renderer
@@ -33,7 +33,7 @@ class Config:
     topic: str
     request: TeachingRequest
     audience: str = "general learners"
-    provider: str = "openai"        # "openai" (default) | "gemini"
+    provider: str = "openai"        # OpenAI is the only supported backend.
     api_key: str = ""
     models: ModelConfig = field(default_factory=ModelConfig)
 
@@ -45,10 +45,12 @@ class Config:
     max_outer_rounds: int = 3       # outer loop cap
     score_threshold: float = 8.0   # stop early when overall_score >= this
     outer_plan_repair_threshold: int = 3
+    outer_repair_mode: str = "auto"  # "auto" | "plan_only" | "asset_only"
 
     # Optional post-run evaluator output
     run_evaluator_baseline: bool = False
-    evaluator_chunk_seconds: float = 900
+    evaluator_chunk_seconds: float = 120
+    evaluator_frame_interval_seconds: float = 2
 
     # Execution
     parallel: bool = True
@@ -56,6 +58,10 @@ class Config:
     animation_mode: str = "basic"  # "basic" | "code2video_critic"
     animation_feedback_rounds: int = 1
     animation_repair_policy: str = "critic_first"  # "critic_first" | "fallback_first"
+    asset_repair_modalities: str = "all"  # "all" | "animation"
+    concept_image_validation_retries: int = 1
+    refinement_patience: int = 1
+    resume: bool = False
 
     # Paths
     run_dir: Path = Path("runs")

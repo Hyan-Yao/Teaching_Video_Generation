@@ -58,7 +58,8 @@ def run_lesson_evaluation(
     plan: LessonPlan,
     video_path: Path | str,
     output_dir: Path,
-    chunk_seconds: float = 900,
+    chunk_seconds: float = 120,
+    frame_interval_seconds: float = 2,
 ) -> Path:
     from teachgen.eval.run_evaluation import run_evaluation
 
@@ -67,4 +68,5 @@ def run_lesson_evaluation(
         request=request,
         output_dir=output_dir,
         chunk_seconds=chunk_seconds,
+        frame_interval_seconds=frame_interval_seconds,
     )

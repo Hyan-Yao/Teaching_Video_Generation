@@ -763,7 +763,12 @@ class GridCodeModifier:
 
     def apply_grid_modifications(self, modifications: List[Dict[str, Any]]) -> str:
         modified_lines = self.lines.copy()
-        for mod in modifications:
+        # Apply from bottom to top so cleanup insertions do not shift later targets.
+        for mod in sorted(
+            modifications,
+            key=lambda value: int(value.get("line_number", 0)),
+            reverse=True,
+        ):
             try:
                 line_idx = int(mod["line_number"]) - 1
             except Exception:
@@ -771,13 +776,22 @@ class GridCodeModifier:
             if not (0 <= line_idx < len(modified_lines)):
                 continue
             original_line = modified_lines[line_idx]
-            # print(f"Replace line {line_idx + 1}: {original_line} -> {mod['new_code'].strip()}")
             indent = len(original_line) - len(original_line.lstrip())
             new_code = " " * indent + mod["new_code"].strip()
-            modified_lines[line_idx] = new_code
+            if mod.get("mode") == "insert_before":
+                modified_lines.insert(line_idx, new_code)
+            elif mod.get("mode") == "insert_after":
+                modified_lines.insert(line_idx + 1, new_code)
+            else:
+                if mod.get("mode") != "replace_any" and not re.search(
+                    r"self\.(?:place_at_grid|place_in_area)\(",
+                    original_line,
+                ):
+                    continue
+                modified_lines[line_idx] = new_code
         return "\n".join(modified_lines)
 
-    def parse_feedback_and_modify(self, feedback_list: List[str]) -> str:
+    def parse_feedback_and_modify(self, feedback_list: List[Any]) -> str:
         """feedback_list: ['... Solution: Line 121: self.place_at_grid(... )', ...]"""
         if not isinstance(feedback_list, list):
             return self.original_code
@@ -791,6 +805,13 @@ class GridCodeModifier:
         )
 
         for item in feedback_list:
+            if isinstance(item, dict) and item.get("action") != "legacy":
+                modification = self._structured_modification(item)
+                if modification:
+                    modifications.append(modification)
+                continue
+            if isinstance(item, dict):
+                item = str(item.get("solution", ""))
             if not isinstance(item, str):
                 continue
             # Extract line number and new code from feedback
@@ -806,7 +827,110 @@ class GridCodeModifier:
             if not m_call:
                 continue
             new_code = m_call.group(0)
-            modifications.append({"line_number": line_number, "new_code": new_code})
+            mode = (
+                "insert_before"
+                if new_code.startswith(("self.remove(", "self.play(FadeOut("))
+                else "replace"
+            )
+            modifications.append(
+                {
+                    "line_number": line_number,
+                    "new_code": new_code,
+                    "mode": mode,
+                }
+            )
         if not modifications and feedback_list:
             raise ValueError("No grid/fade/remove modifications could be parsed from feedback")
-        return self.apply_grid_modifications(modifications)
+        modified_code = self.apply_grid_modifications(modifications)
+        if feedback_list and modified_code == self.original_code:
+            raise ValueError("Parsed critic edits did not match safe target lines")
+        return modified_code
+
+    def _structured_modification(self, action: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Translate one bounded critic action into one safe source edit."""
+        try:
+            line_number = int(action["line_number"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        if not 1 <= line_number <= len(self.lines):
+            return None
+
+        kind = action.get("action")
+        obj = str(action.get("object_name", "")).strip()
+        if kind == "replace_placement" and obj:
+            method = action.get("method")
+            scale = action.get("scale_factor")
+            suffix = f", scale_factor={float(scale):g}" if scale is not None else ""
+            if method == "place_at_grid" and re.fullmatch(
+                r"[A-F][1-6]", str(action.get("grid_position", ""))
+            ):
+                code = f"self.place_at_grid({obj}, '{action['grid_position']}'{suffix})"
+            elif (
+                method == "place_in_area"
+                and re.fullmatch(r"[A-F][1-6]", str(action.get("top_left", "")))
+                and re.fullmatch(r"[A-F][1-6]", str(action.get("bottom_right", "")))
+            ):
+                code = (
+                    f"self.place_in_area({obj}, '{action['top_left']}', "
+                    f"'{action['bottom_right']}'{suffix})"
+                )
+            else:
+                return None
+            return {"line_number": line_number, "new_code": code, "mode": "replace"}
+
+        if kind == "insert_cleanup":
+            names = [
+                str(name).strip()
+                for name in action.get("object_names", [])
+                if str(name).strip()
+            ]
+            protected = {"self.title", "self.lecture", "title", "lecture"}
+            names = [name for name in names if name not in protected]
+            if not names:
+                return None
+            if action.get("method") == "remove":
+                code = f"self.remove({', '.join(names)})"
+            else:
+                code = f"self.play({', '.join(f'FadeOut({name})' for name in names)})"
+            return {"line_number": line_number, "new_code": code, "mode": "insert_before"}
+
+        original = self.lines[line_number - 1]
+        if kind == "replace_write" and obj:
+            pattern = rf"Write\(\s*{re.escape(obj)}\s*\)"
+            replaced = re.sub(pattern, f"FadeIn({obj})", original, count=1)
+            if replaced != original:
+                return {"line_number": line_number, "new_code": replaced.strip(), "mode": "replace_any"}
+            return None
+
+        if kind == "set_z_index" and obj and action.get("z_index") is not None:
+            return {
+                "line_number": line_number,
+                "new_code": f"{obj}.set_z_index({int(action['z_index'])})",
+                "mode": "insert_after",
+            }
+
+        if kind == "update_style" and obj:
+            attr = action.get("style_attribute")
+            value = action.get("style_value")
+            if attr == "font_size" and isinstance(value, (int, float)):
+                code = re.sub(
+                    r"font_size\s*=\s*[^,)]+",
+                    f"font_size={float(value):g}",
+                    original,
+                    count=1,
+                )
+            elif attr == "color" and isinstance(value, str) and re.fullmatch(
+                r"#[0-9A-Fa-f]{6}", value
+            ):
+                code = re.sub(
+                    r"color\s*=\s*[^,)]+",
+                    f"color='{value}'",
+                    original,
+                    count=1,
+                )
+            else:
+                return None
+            if code == original:
+                return None
+            return {"line_number": line_number, "new_code": code.strip(), "mode": "replace_any"}
+        return None

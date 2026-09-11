@@ -8,6 +8,7 @@ dependencies = [
     "manim>=0.20.1",
     "moviepy>=1.0.3",
     "opencv-python>=4.13.0.92",
+    "openai>=1.90.0",
     "pillow>=10.0",
     "psutil>=7.2.2",
     "pydantic>=2.5",

@@ -4,6 +4,7 @@ import argparse
 import json
 import time
 import random
+import shutil
 import subprocess
 from typing import List, Dict, Any, Optional, Tuple, Callable
 from dataclasses import dataclass
@@ -25,6 +26,7 @@ class Section:
     lecture_lines: List[str]
     animations: List[str]
     target_seconds: Optional[float] = None
+    step_timings: Optional[List[Dict[str, float]]] = None
 
 
 @dataclass
@@ -39,8 +41,12 @@ class VideoFeedback:
     section_id: str
     video_path: str
     has_issues: bool
-    suggested_improvements: List[str]
+    suggested_improvements: List[Dict[str, Any]]
     raw_response: Optional[str] = None
+    severity: str = "minor"
+    persistent: bool = False
+    sampled_timestamps: Optional[List[float]] = None
+    rejection_reason: Optional[str] = None
 
 
 @dataclass
@@ -48,6 +54,8 @@ class RunConfig:
     use_feedback: bool = True
     use_assets: bool = True
     api: Callable = None
+    critic_api: Callable = None
+    critic_vision_api: Callable = None
     feedback_rounds: int = 2
     iconfinder_api_key: str = ""
     max_code_token_length: int = 10000
@@ -55,6 +63,10 @@ class RunConfig:
     max_regenerate_tries: int = 10
     max_feedback_gen_code_tries: int = 3
     max_mllm_fix_bugs_tries: int = 3
+
+
+def _severity_rank(value: str) -> int:
+    return {"minor": 1, "major": 2, "blocker": 3}.get(str(value).lower(), 2)
 
 
 class TeachingVideoAgent:
@@ -73,6 +85,8 @@ class TeachingVideoAgent:
         self.use_feedback = cfg.use_feedback
         self.use_assets = cfg.use_assets
         self.API = cfg.api
+        self.critic_API = cfg.critic_api or cfg.api
+        self.critic_vision_API = cfg.critic_vision_api
         self.feedback_rounds = cfg.feedback_rounds
         self.iconfinder_api_key = cfg.iconfinder_api_key
         self.max_code_token_length = cfg.max_code_token_length
@@ -315,16 +329,16 @@ class TeachingVideoAgent:
             try:
                 modifier = GridCodeModifier(current_code)
                 modified_code = modifier.parse_feedback_and_modify(feedback_improvements)
+                compile(modified_code, str(code_file), "exec")
                 with open(code_file, "w", encoding="utf-8") as f:
                     f.write(modified_code)
 
                 self.section_codes[section.id] = modified_code
                 return modified_code
             except Exception as e:
-                print(f"⚠️ GridCodeModifier failed, falling back to original code: {e}")
-                code_gen_prompt = get_feedback_improve_code(
-                    feedback=get_feedback_list_prefix(feedback_improvements), code=current_code
-                )
+                raise RuntimeError(
+                    f"Local animation patch could not be applied safely: {e}"
+                ) from e
 
         else:
             code_gen_prompt = get_prompt3_code(regenerate_note=regenerate_note, section=section, base_class=base_class)
@@ -402,25 +416,31 @@ class TeachingVideoAgent:
         return False
 
     def get_mllm_feedback(self, section: Section, video_path: str, round_number: int = 1) -> VideoFeedback:
-        print(f"🤖 {self.learning_topic} Using MLLM to analyze video ({round_number}/{self.feedback_rounds}): {section.id}")
+        print(f"🤖 {self.learning_topic} Using MLLM to analyze video (pass {round_number}): {section.id}")
 
         current_code = self.section_codes[section.id]
         positions = self.extractor.extract_grid_positions(current_code)
         position_table = self.extractor.generate_position_table(positions)
-        analysis_prompt = get_prompt4_layout_feedback(section=section, position_table=position_table)
+        analysis_prompt = get_prompt4_layout_feedback(
+            section=section,
+            position_table=position_table,
+            current_code=current_code,
+        )
 
         def _parse_layout(feedback_content):
-            has_layout_issues, suggested_improvements = False, []
+            has_layout_issues, suggested_improvements, severity = False, [], "minor"
+            persistent = False
             try:
-                data = json.loads(feedback_content)
+                data = json.loads(extract_json_from_markdown(feedback_content))
                 lay = data.get("layout", {})
                 has_layout_issues = bool(lay.get("has_issues", False))
+                severity = str(lay.get("severity", "minor")).strip().lower()
+                persistent = bool(lay.get("persistent", False))
+                if severity not in {"minor", "major", "blocker"}:
+                    severity = "major" if has_layout_issues else "minor"
                 for it in lay.get("improvements", []) or []:
                     if isinstance(it, dict):
-                        prob = str(it.get("problem", "")).strip()
-                        sol = str(it.get("solution", "")).strip()
-                        if prob or sol:
-                            suggested_improvements.append(f"[LAYOUT] Problem: {prob}; Solution: {sol}")
+                        suggested_improvements.append(it)
 
             except json.JSONDecodeError:
                 print(f"⚠️ {self.learning_topic} JSON parse failed, fallback to keyword analysis")
@@ -428,83 +448,120 @@ class TeachingVideoAgent:
                 for m in re.finditer(
                     r"Problem:\s*(.*?);\s*Solution:\s*(.*?)(?=\n|$)", feedback_content, flags=re.IGNORECASE | re.DOTALL
                 ):
-                    suggested_improvements.append(f"[LAYOUT] Problem: {m.group(1).strip()}; Solution: {m.group(2).strip()}")
+                    suggested_improvements.append({"action": "legacy", "solution": m.group(2).strip()})
+                if suggested_improvements:
+                    has_layout_issues, severity, persistent = True, "major", True
 
-                if not suggested_improvements:
-                    for sol in re.findall(r"Solution\s*:\s*(.+)", feedback_content, flags=re.IGNORECASE):
-                        suggested_improvements.append(f"[LAYOUT] Problem: ; Solution: {sol.strip()}")
-
-            return has_layout_issues, suggested_improvements
+            actionable = has_layout_issues and persistent and severity in {"major", "blocker"}
+            return actionable, suggested_improvements, severity, persistent
 
         try:
-            response = request_gpt5_video_img(prompt=analysis_prompt, video_path=video_path, image_path=self.GRID_IMG_PATH)
+            if self.critic_vision_API is not None:
+                response = self.critic_vision_API(
+                    prompt=analysis_prompt,
+                    video_path=video_path,
+                    image_path=self.GRID_IMG_PATH,
+                    section=section,
+                    round_number=round_number,
+                )
+            else:
+                response = request_gpt5_video_img(
+                    prompt=analysis_prompt,
+                    video_path=video_path,
+                    image_path=self.GRID_IMG_PATH,
+                )
             feedback_content = extract_answer_from_response(response)
-            has_layout_issues, suggested_improvements = _parse_layout(feedback_content)
+            has_layout_issues, suggested_improvements, severity, persistent = _parse_layout(feedback_content)
             feedback = VideoFeedback(
                 section_id=section.id,
                 video_path=video_path,
                 has_issues=has_layout_issues,
                 suggested_improvements=suggested_improvements,
                 raw_response=feedback_content,
+                severity=severity,
+                persistent=persistent,
+                sampled_timestamps=getattr(response, "sampled_timestamps", None),
             )
             self.video_feedbacks[f"{section.id}_round{round_number}"] = feedback
             return feedback
 
         except Exception as e:
             print(f"❌ {self.learning_topic} MLLM analysis failed: {str(e)}")
-            return VideoFeedback(
+            feedback = VideoFeedback(
                 section_id=section.id,
                 video_path=video_path,
-                has_issues=False,
+                has_issues=True,
                 suggested_improvements=[],
                 raw_response=f"Error: {str(e)}",
+                severity="blocker",
+                persistent=True,
+                rejection_reason="critic_call_failed",
             )
+            self.video_feedbacks[f"{section.id}_round{round_number}"] = feedback
+            return feedback
 
     def optimize_with_feedback(self, section: Section, feedback: VideoFeedback) -> bool:
-        """Optimize the code based on feedback from the MLLM"""
-        if not feedback.has_issues or not feedback.suggested_improvements:
+        """Optimize the code based on feedback from the MLLM."""
+        if not feedback.has_issues:
             print(f"✅ {self.learning_topic} {section.id} no optimization needed")
             return True
+        if not feedback.suggested_improvements:
+            print(f"❌ {self.learning_topic} {section.id} critic found issues but returned no safe local repairs")
+            return False
 
         # === Step 1: back up original code ===
         original_code_content = self.section_codes[section.id]
 
-        for attempt in range(self.max_feedback_gen_code_tries):
-            print(
-                f"🎯 {self.learning_topic} MLLM feedback optimization {section.id} code, attempt {attempt + 1}/{self.max_feedback_gen_code_tries}"
-            )
-
-            # === Step 2: back up original code and apply improvements ===
-            if attempt > 0:
-                self.section_codes[section.id] = original_code_content
-
-            # === Step 3: re-generate code with feedback ===
-            self.generate_section_code(
-                section=section, attempt=attempt + 1, feedback_improvements=feedback.suggested_improvements
-            )
-            success = self.debug_and_fix_code(section.id, max_fix_attempts=self.max_mllm_fix_bugs_tries)
-            if success:
-                optimized_output_dir = self.output_dir / "optimized_videos"
-                optimized_output_dir.mkdir(exist_ok=True)
-                optimized_video_path = optimized_output_dir / f"{section.id}_optimized.mp4"
-
-                if section.id in self.section_videos:
-                    original_video_path = Path(self.section_videos[section.id])
-                    if original_video_path.exists():
-                        original_video_path.rename(optimized_video_path)
-                        self.section_videos[section.id] = str(optimized_video_path)
-                        print(f"✨ {self.learning_topic} {section.id} optimized video saved: {optimized_video_path}")
-                    else:
-                        print(f"⚠️ {self.learning_topic} {section.id} original video file not found: {original_video_path}")
-                else:
-                    print(f"⚠️ {self.learning_topic} {section.id} no optimized video path found")
-                return True
-            else:
+        original_api = self.API
+        original_fixer_api = self.scope_refine_fixer.request_gpt
+        self.API = self.critic_API
+        self.scope_refine_fixer.request_gpt = self.critic_API
+        try:
+            for attempt in range(min(1, self.max_feedback_gen_code_tries)):
                 print(
-                    f"❌ {self.learning_topic} {section.id} MLLM optimization failed, attempt {attempt + 1}/{self.max_feedback_gen_code_tries}"
+                    f"🎯 {self.learning_topic} MLLM feedback optimization {section.id} code, attempt {attempt + 1}/{self.max_feedback_gen_code_tries}"
                 )
 
-        return False
+                # === Step 2: back up original code and apply improvements ===
+                if attempt > 0:
+                    self.section_codes[section.id] = original_code_content
+
+                # === Step 3: re-generate code with feedback ===
+                try:
+                    self.generate_section_code(
+                        section=section,
+                        attempt=attempt + 1,
+                        feedback_improvements=feedback.suggested_improvements,
+                    )
+                except Exception as e:
+                    print(f"❌ {self.learning_topic} {section.id} local critic patch failed: {e}")
+                    return False
+                success = self.debug_and_fix_code(section.id, max_fix_attempts=self.max_mllm_fix_bugs_tries)
+                if success:
+                    optimized_output_dir = self.output_dir / "optimized_videos"
+                    optimized_output_dir.mkdir(exist_ok=True)
+                    optimized_video_path = optimized_output_dir / f"{section.id}_optimized.mp4"
+
+                    if section.id in self.section_videos:
+                        original_video_path = Path(self.section_videos[section.id])
+                        if original_video_path.exists():
+                            original_video_path.rename(optimized_video_path)
+                            self.section_videos[section.id] = str(optimized_video_path)
+                            print(f"✨ {self.learning_topic} {section.id} optimized video saved: {optimized_video_path}")
+                        else:
+                            print(f"⚠️ {self.learning_topic} {section.id} original video file not found: {original_video_path}")
+                    else:
+                        print(f"⚠️ {self.learning_topic} {section.id} no optimized video path found")
+                    return True
+                else:
+                    print(
+                        f"❌ {self.learning_topic} {section.id} MLLM optimization failed, attempt {attempt + 1}/{self.max_feedback_gen_code_tries}"
+                    )
+
+            return False
+        finally:
+            self.API = original_api
+            self.scope_refine_fixer.request_gpt = original_fixer_api
 
     def generate_codes(self) -> Dict[str, str]:
         if not self.sections:
@@ -555,38 +612,125 @@ class TeachingVideoAgent:
                 print(f"❌{self.learning_topic} {section_id} all failed, skipping section")
                 return False
 
-            # MLLM feedback
-            if self.use_feedback:
+            # MLLM feedback: every repaired render receives a verification pass.
+            if self.use_feedback and self.feedback_rounds > 0:
+                initial_video = None
+                initial_code = self.section_codes.get(section_id, "")
                 try:
-                    for round in range(self.feedback_rounds):
+                    initial_video = self._snapshot_section_video(section_id, "initial")
+                    feedback = self.get_mllm_feedback(
+                        section,
+                        self.section_videos.get(section_id),
+                        round_number=1,
+                    )
+                    initial_feedback = feedback
+                    if feedback.rejection_reason == "critic_call_failed":
+                        self._restore_section_version(section_id, initial_video, initial_code)
+                        print(
+                            f"⚠️ {self.learning_topic} {section_id} critic unavailable; "
+                            "keeping the successfully rendered animation"
+                        )
+                        return success
+                    for round in range(min(1, self.feedback_rounds)):
+                        if not feedback.has_issues:
+                            return success
                         current_video = self.section_videos.get(section_id)
                         if not current_video:
                             print(f"❌ {self.learning_topic} {section_id} no video available for MLLM feedback")
+                            self._restore_section_version(section_id, initial_video, initial_code)
                             return success
                         try:
-                            feedback = self.get_mllm_feedback(section, current_video, round_number=round + 1)
-
                             optimization_success = self.optimize_with_feedback(section, feedback)
-                            if optimization_success:
-                                pass
-                            else:
+                            if not optimization_success:
                                 print(
-                                    f"⚠️ {self.learning_topic} {section_id} round {round+1} MLLM feedback optimization failed, using current version"
+                                    f"⚠️ {self.learning_topic} {section_id} round {round+1} "
+                                    "critic repair failed; keeping the original animation"
                                 )
+                                self._restore_section_version(
+                                    section_id, initial_video, initial_code
+                                )
+                                return success
+                            repaired_video = self.section_videos.get(section_id)
+                            if not repaired_video:
+                                self._restore_section_version(
+                                    section_id, initial_video, initial_code
+                                )
+                                return success
+                            self._snapshot_section_video(
+                                section_id,
+                                f"repaired_round_{round + 1}",
+                            )
+                            feedback = self.get_mllm_feedback(
+                                section,
+                                repaired_video,
+                                round_number=round + 2,
+                            )
                         except Exception as e:
                             print(
                                 f"⚠️ {self.learning_topic} {section_id} round {round+1} MLLM feedback processing exception: {str(e)}"
                             )
-                            continue
+                            self._restore_section_version(section_id, initial_video, initial_code)
+                            return success
+
+                    if feedback.has_issues:
+                        feedback.rejection_reason = "persistent_major_issue_after_repair"
+                        if _severity_rank(feedback.severity) < _severity_rank(
+                            initial_feedback.severity
+                        ):
+                            print(
+                                f"⚠️ {self.learning_topic} {section_id} repair reduced "
+                                "critic severity; keeping the improved animation"
+                            )
+                            return success
+                        self._restore_section_version(section_id, initial_video, initial_code)
+                        if (
+                            initial_feedback.severity == "blocker"
+                            and initial_feedback.persistent
+                            and initial_feedback.rejection_reason != "critic_call_failed"
+                        ):
+                            print(
+                                f"❌ {self.learning_topic} {section_id} retained a "
+                                "confirmed blocker after repair"
+                            )
+                            return False
+                        print(
+                            f"⚠️ {self.learning_topic} {section_id} repair was not "
+                            "better; keeping the original animation"
+                        )
+                        return success
 
                 except Exception as e:
                     print(f"⚠️ {self.learning_topic} {section_id} MLLM feedback processing exception: {str(e)}")
+                    self._restore_section_version(section_id, initial_video, initial_code)
+                    return success
 
             return success
 
         except Exception as e:
             print(f"❌ {self.learning_topic} {section_id} render process exception: {str(e)}")
             return False
+
+    def _snapshot_section_video(self, section_id: str, label: str) -> Optional[str]:
+        current = self.section_videos.get(section_id)
+        if not current or not Path(current).is_file():
+            return None
+        versions_dir = self.output_dir / "critic_versions"
+        versions_dir.mkdir(exist_ok=True)
+        destination = versions_dir / f"{section_id}_{label}.mp4"
+        shutil.copy2(current, destination)
+        return str(destination)
+
+    def _restore_section_version(
+        self,
+        section_id: str,
+        video_path: Optional[str],
+        code: str,
+    ) -> None:
+        if video_path and Path(video_path).is_file():
+            self.section_videos[section_id] = video_path
+        if code:
+            self.section_codes[section_id] = code
+            (self.output_dir / f"{section_id}.py").write_text(code, encoding="utf-8")
 
     def render_section_worker(self, section_data) -> Tuple[str, bool, Optional[str]]:
         section_id = "unknown"

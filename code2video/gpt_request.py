@@ -5,8 +5,8 @@ All config is read from the project-root .env file:
 
   OPENAI_API_KEY=sk-proj-...
   OPENAI_BASE_URL=https://api.openai.com/v1   # optional, this is the default
-  LLM_MODEL=gpt-4o                             # model for text generation
-  VISION_MODEL=gpt-4o                          # model for vision feedback (defaults to LLM_MODEL)
+  TEACHGEN_ANIMATION_CODE_MODEL=gpt-5.6-sol    # model for text/code generation
+  TEACHGEN_ANIMATION_CRITIC_MODEL=gpt-5.6-sol  # model for vision feedback
 """
 
 import os
@@ -22,8 +22,8 @@ load_dotenv(pathlib.Path(__file__).parent.parent / ".env")
 
 _BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 _API_KEY = os.getenv("OPENAI_API_KEY", "")
-_LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o")
-_VISION_MODEL = os.getenv("VISION_MODEL") or _LLM_MODEL
+_LLM_MODEL = os.getenv("TEACHGEN_ANIMATION_CODE_MODEL", "gpt-5.6-sol")
+_VISION_MODEL = os.getenv("TEACHGEN_ANIMATION_CRITIC_MODEL") or _LLM_MODEL
 
 
 def _client() -> OpenAI:
@@ -42,7 +42,7 @@ def request_llm(prompt: str, max_tokens: int = 10000, max_retries: int = 3):
             resp = client.chat.completions.create(
                 model=_LLM_MODEL,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=max_tokens,
+                **_completion_limit(_LLM_MODEL, max_tokens),
             )
             if resp.usage:
                 usage["prompt_tokens"] = resp.usage.prompt_tokens or 0
@@ -74,7 +74,7 @@ def request_vision(prompt: str, image_b64_list: list, max_tokens: int = 10000, m
             return client.chat.completions.create(
                 model=_VISION_MODEL,
                 messages=[{"role": "user", "content": content}],
-                max_tokens=max_tokens,
+                **_completion_limit(_VISION_MODEL, max_tokens),
             )
         except Exception as e:
             if attempt == max_retries:
@@ -82,6 +82,12 @@ def request_vision(prompt: str, image_b64_list: list, max_tokens: int = 10000, m
             delay = (2 ** attempt) * 0.2 + random.random() * 0.2
             print(f"Vision request failed: {e}. Retry {attempt}/{max_retries} in {delay:.1f}s...")
             time.sleep(delay)
+
+
+def _completion_limit(model: str, max_tokens: int) -> dict:
+    if model.casefold().startswith("gpt-5"):
+        return {"max_completion_tokens": max(max_tokens, 12000)}
+    return {"max_tokens": max_tokens}
 
 
 def request_gpt5_video_img(

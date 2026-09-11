@@ -38,8 +38,9 @@ python -m teachgen --request-json examples/regression_request.json --plan-only
 The output video lands at `runs/<topic>/video/final.mp4`. With
 `--feedback-mode evaluator`, the original draft is kept at
 `runs/<topic>/video/draft_r0.mp4`, evaluator feedback output lands under
-`runs/<topic>/evaluator_feedback_r<n>/`, and the router-ready review lands at
-`runs/<topic>/review_r<n>.json`. With `--eval-baseline`, the final evaluator report
+`runs/<topic>/evaluator_feedback_r<n>/`. Every candidate is evaluated and
+`selection.json` records why the selected draft became `final.mp4`. With
+`--eval-baseline`, the final evaluator report
 lands at `runs/<topic>/evaluator_baseline/evaluation_result.json`. See
 **`teachgen/README.md`** for the architecture, the two-phase flow, the three
 renderers, evaluator usage, and how to extend it.
@@ -107,13 +108,18 @@ runs/<topic>/lesson_plan_refined_r<n>.json
 ```
 
 **Outer video refiner.** With `--feedback-mode evaluator`, the produced draft video is
-evaluated after each outer round. The evaluator drives one of two repair paths:
+evaluated after each outer round. Findings are routed by their observed cause rather
+than by metric name, and only one repair class runs from each evaluation:
 
-- `plan` repair: low pedagogical/content metrics trigger a full lesson-plan revision,
-  then the whole video is regenerated from the revised plan.
-- `asset` repair: low visual/multimedia metrics are adapted into segment-level fixes
-  (`rewrite_narration`, `change_modality`, `re_render`, `adjust_timing`) and only
-  dirty segments are regenerated.
+- `plan` repair: narration, objective-depth, or sequencing failures trigger bounded
+  edits to the evidence-identified segments.
+- `asset` repair: visual or rendering failures trigger segment-level redesign or
+  re-rendering while narration remains unchanged.
+
+Every produced draft is evaluated. `round_manifest.json` records its plan, hash,
+duration, actual renderers, and scores; `selection.json` explains which draft was
+copied to `final.mp4`. A later draft cannot replace the current best unless its score
+improves safely (or wins the documented tie-breakers).
 
 **Evaluator mode.** To use the evaluator during refinement:
 
@@ -138,7 +144,9 @@ runs/<topic>/asset_review_r<n>.json                 # asset branch only
 runs/<topic>/outer_repair_decision_r<n>.json
 runs/<topic>/outer_plan_feedback_r<n>.json          # plan branch only
 runs/<topic>/outer_lesson_plan_refined_r<n>.json    # plan branch only
-runs/<topic>/outer_plan_eval_after_r<n>.json        # plan branch only
+runs/<topic>/round_manifest.json
+runs/<topic>/selection.json
+runs/<topic>/evaluator_final/evaluation_result.json
 runs/<topic>/evaluator_baseline/evaluation_result.json   # only with --eval-baseline
 ```
 

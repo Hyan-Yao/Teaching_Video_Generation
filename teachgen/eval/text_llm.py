@@ -1,5 +1,4 @@
 import os
-import hashlib
 from typing import TypeVar
 
 from openai import OpenAI
@@ -10,12 +9,12 @@ OutputModel = TypeVar("OutputModel", bound=BaseModel)
 
 class TextLLM:
     def __init__(self, model: str | None = None):
-        self.model = model or os.environ.get("TEACHGEN_EVAL_TEXT_MODEL", "openai/gpt-4.1")
+        self.model = model or os.environ.get("TEACHGEN_EVAL_TEXT_MODEL", "gpt-5.6-sol")
         self.max_retries = int(os.environ.get("TEACHGEN_EVAL_TEXT_RETRIES", "3"))
-        self.client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=os.environ["OPENROUTER_API_KEY"],
-        )
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY is required for the evaluator")
+        self.client = OpenAI(api_key=api_key)
 
     def analyze(
         self,
@@ -26,29 +25,23 @@ class TextLLM:
         last_answer = ""
 
         for attempt in range(self.max_retries + 1):
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0,
-                seed=12345 + attempt,
-                max_tokens=8000,
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": output_model.__name__,
-                        "strict": True,
-                        "schema": output_model.model_json_schema(),
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_completion_tokens=12000,
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": output_model.__name__,
+                            "strict": True,
+                            "schema": output_model.model_json_schema(),
+                        },
                     },
-                },
-                extra_body={
-                    "session_id": _stable_session_id(
-                        self.model,
-                        output_model.__name__,
-                        prompt,
-                        attempt=attempt,
-                    ),
-                },
-            )
+                )
+            except Exception as exc:
+                last_error = exc
+                continue
 
             answer = response.choices[0].message.content
             last_answer = answer or ""
@@ -67,8 +60,3 @@ class TextLLM:
             f"{self.max_retries + 1} attempts for {output_model.__name__}. "
             f"Last error: {last_error}. Last response prefix: {snippet}"
         )
-
-
-def _stable_session_id(model: str, schema_name: str, prompt: str, *, attempt: int = 0) -> str:
-    key = f"{model}\n{schema_name}\n{attempt}\n{prompt}".encode("utf-8")
-    return f"eval-{hashlib.sha256(key).hexdigest()[:32]}"

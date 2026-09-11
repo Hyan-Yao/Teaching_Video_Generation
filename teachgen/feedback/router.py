@@ -40,7 +40,7 @@ def apply_with_cache_hints(
             dirty_full.add(seg.id)  # audio and timing-driven visual must regen
         elif c.fix_action == "change_modality":
             original_modality = seg.modality
-            seg.modality = _pick_alternative(seg.modality)
+            seg.modality = _pick_alternative(seg.modality, c)
             seg.visual_brief = _rewrite_brief(
                 provider,
                 plan,
@@ -66,8 +66,14 @@ def apply_with_cache_hints(
     return dirty_full, dirty_visual
 
 
-def _pick_alternative(current: Modality) -> Modality:
-    """Conservative fallback ladder when the reviewer says the approach is wrong."""
+def _pick_alternative(current: Modality, critique: Critique | None = None) -> Modality:
+    """Choose a replacement that retains any timing capability the repair needs."""
+    if (
+        current in {Modality.CONCEPT_IMAGE, Modality.SLIDE}
+        and critique is not None
+        and critique.repair_scope == "timing"
+    ):
+        return Modality.ANIMATION
     ladder = {
         Modality.ANIMATION: Modality.CONCEPT_IMAGE,
         Modality.CONCEPT_IMAGE: Modality.SLIDE,
